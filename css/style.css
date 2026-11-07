@@ -1,0 +1,1663 @@
+/**
+ * NesaMate - Modern Safari-Natural System Design (Mobile-First 9:16)
+ * Palet Warna Resmi:
+ * - Primary Dark Forest : #1E3B2F
+ * - Secondary Sage      : #7F8C6A
+ * - Muted Gold / Sand   : #C8B48A
+ * - Off-White Cream     : #F5F0E6
+ * - Accent / Borders    : #1E3B2F / Soft Dark Charcoal (#1A1A1A)
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --color-primary: #1E3B2F;
+  --color-primary-light: #2A5141;
+  --color-secondary: #7F8C6A;
+  --color-secondary-soft: #E9ECE3;
+  --color-gold: #C8B48A;
+  --color-gold-light: #EFE8D8;
+  --color-cream: #F5F0E6;
+  --color-card-cream: #FAF7F0;
+  --color-dark-charcoal: #1A1A1A;
+  --color-border-subtle: rgba(30, 59, 47, 0.14);
+
+  --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --radius-pill: 999px;
+  --radius-card: 16px;
+  --radius-sm: 10px;
+
+  --shadow-soft: 0 4px 16px rgba(30, 59, 47, 0.08);
+  --shadow-elevated: 0 10px 28px rgba(30, 59, 47, 0.16);
+  --shadow-gold: 0 6px 20px rgba(200, 180, 138, 0.35);
+
+  --transition-smooth: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: #12221B;
+  color: var(--color-dark-charcoal);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow-x: hidden;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(127, 140, 106, 0.18) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(200, 180, 138, 0.14) 0%, transparent 50%);
+}
+
+/* ========================================================
+   MOBILE DEVICE FRAME (TARGET VIEWPORT 9:16)
+   ======================================================== */
+.mobile-device-container {
+  width: 100%;
+  max-width: 430px;
+  height: 100vh;
+  max-height: 900px;
+  background-color: var(--color-cream);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.6);
+}
+
+@media (min-width: 480px) {
+  .mobile-device-container {
+    height: 94vh;
+    border-radius: 36px;
+    border: 7px solid #25332B;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(200, 180, 138, 0.25);
+  }
+}
+
+/* ========================================================
+   SCREEN MANAGEMENT (ANTI-BERTUMPUK)
+   ======================================================== */
+.screen-view {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-cream);
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transform: scale(0.98);
+  transition: opacity 0.3s cubic-bezier(0.25, 1, 0.5, 1), transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), visibility 0.3s;
+  z-index: 10;
+  overflow: hidden;
+}
+
+.screen-view.is-active {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+  transform: scale(1);
+  z-index: 20;
+}
+
+/* ========================================================
+   LAYAR 1: LANDING PAGE (ONBOARDING)
+   ======================================================== */
+.landing-screen {
+  padding: 48px 24px 36px;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(180deg, #F5F0E6 0%, #EDE5D5 100%);
+  text-align: center;
+}
+
+.landing-header {
+  margin-top: 10px;
+}
+
+.brand-badge-pill {
+  display: inline-block;
+  background: var(--color-secondary-soft);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 14px;
+  border-radius: var(--radius-pill);
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.landing-title {
+  font-size: 38px;
+  font-weight: 800;
+  color: var(--color-primary);
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+}
+
+.landing-subtitle {
+  font-size: 13.5px;
+  color: var(--color-secondary);
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.landing-hero-mascot {
+  width: 170px;
+  height: 170px;
+  margin: 20px auto;
+  background: radial-gradient(circle, #FAF7F0 45%, #E5DAC3 100%);
+  border-radius: 50%;
+  border: 4px solid var(--color-gold);
+  box-shadow: var(--shadow-gold);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.landing-form-box {
+  width: 100%;
+  max-width: 320px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pill-input {
+  width: 100%;
+  padding: 15px 22px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid #D8D0BF;
+  background: #FFFFFF;
+  color: var(--color-primary);
+  font-size: 14.5px;
+  font-weight: 600;
+  font-family: inherit;
+  outline: none;
+  text-align: center;
+  transition: var(--transition-smooth);
+}
+
+.pill-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(30, 59, 47, 0.15);
+}
+
+.pill-btn-start {
+  width: 100%;
+  padding: 15px 24px;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-primary);
+  color: var(--color-gold);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-elevated);
+  transition: var(--transition-smooth);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.pill-btn-start:hover {
+  background-color: var(--color-primary-light);
+  transform: translateY(-2px);
+}
+
+.pill-btn-start:active {
+  transform: translateY(0);
+}
+
+/* ========================================================
+   LAYAR 2: GREETING & PILIH MODE (MAIN ONBOARDING)
+   ======================================================== */
+.greeting-screen {
+  padding: 32px 20px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--color-cream);
+}
+
+.greeting-brand-top {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-primary);
+  letter-spacing: 0.5px;
+}
+
+/* Floating Speech Bubble di Atas Kepala Nesa */
+.speech-bubble-floating {
+  background: #FFFFFF;
+  border: 1.5px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  padding: 14px 18px;
+  max-width: 92%;
+  box-shadow: var(--shadow-soft);
+  position: relative;
+  text-align: center;
+  margin-top: 10px;
+}
+
+.speech-bubble-floating::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 14px;
+  height: 14px;
+  background: #FFFFFF;
+  border-bottom: 1.5px solid var(--color-border-subtle);
+  border-right: 1.5px solid var(--color-border-subtle);
+}
+
+.speech-bubble-text {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* Avatar Nesa Si Rusa Tampil BESAR di Tengah */
+.mascot-stage-big {
+  width: 210px;
+  height: 210px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #FAF7F0 40%, #E8DEC9 100%);
+  border: 4px solid var(--color-gold);
+  box-shadow: var(--shadow-gold);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 10px 0;
+  position: relative;
+}
+
+/* 3 Tombol Pill Dark Forest / Sage di Bawah */
+.mode-selection-group {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.pill-mode-btn {
+  width: 100%;
+  padding: 15px 20px;
+  border-radius: var(--radius-pill);
+  font-size: 14.5px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  transition: var(--transition-smooth);
+}
+
+.pill-mode-btn.btn-dark-forest {
+  background-color: var(--color-primary);
+  color: var(--color-cream);
+  box-shadow: 0 4px 14px rgba(30, 59, 47, 0.25);
+}
+
+.pill-mode-btn.btn-sage {
+  background-color: var(--color-secondary);
+  color: #FFFFFF;
+  box-shadow: 0 4px 14px rgba(127, 140, 106, 0.25);
+}
+
+.pill-mode-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+}
+
+/* ========================================================
+   LAYAR 3: FREE MODE (MODE EKSPLORASI BEBAS & MAPS)
+   ======================================================== */
+.free-mode-screen {
+  width: 100%;
+  height: 100%;
+}
+
+/* Level 1 (z-index: 1): Leaflet Map Container */
+#map,
+.map-fullscreen-container,
+.jogging-map-container,
+#free-map-container,
+#challenge-map-container,
+#jogging-map-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Level 4 (z-index: 30): Top Floating Bar Minimalis & Unified Header Card */
+.free-top-bar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.free-nav-header-card {
+  background: rgba(245, 240, 230, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1.5px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  padding: 8px 10px;
+  box-shadow: 0 6px 20px rgba(30, 59, 47, 0.12);
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.top-bar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.btn-icon-back {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-primary);
+  font-size: 15px;
+  font-weight: 800;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  transition: var(--transition-smooth);
+  flex-shrink: 0;
+}
+
+.btn-icon-back:hover {
+  background: var(--color-cream);
+}
+
+.title-pill-badge {
+  background: var(--color-primary);
+  color: var(--color-cream);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+/* Level 2 (z-index: 10): POI Filter Horizontal Scrollable Container */
+.poi-filter-scroll-wrapper {
+  background: rgba(230, 224, 212, 0.65);
+  border-radius: var(--radius-pill);
+  padding: 3px 5px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.poi-filter-chips-row {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  pointer-events: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 1px 2px;
+  width: 100%;
+}
+
+.poi-filter-chips-row::-webkit-scrollbar {
+  display: none;
+}
+
+.pill-chip-filter {
+  background: #FFFFFF;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  transition: var(--transition-smooth);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pill-chip-filter.is-active {
+  background: var(--color-primary);
+  color: var(--color-cream);
+  border-color: var(--color-primary);
+}
+
+/* Level 2 (z-index: 10): Bottom Left Mini Avatar Thumbnail Nesa Melayang */
+.mini-avatar-fab-left {
+  position: absolute;
+  bottom: 74px;
+  left: 14px;
+  z-index: 10;
+  cursor: pointer;
+  display: block;
+}
+
+.mini-avatar-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #FAF7F0;
+  border: 3px solid var(--color-gold);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  transition: transform 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.mini-avatar-box:hover {
+  transform: scale(1.08);
+}
+
+/* Indikator Visual Melayang: Live Audio Connected (Hands-Free Real-Time Audio Call) */
+.live-audio-pill {
+  position: absolute;
+  bottom: 74px;
+  right: 14px;
+  z-index: 45;
+  background: rgba(30, 59, 47, 0.94);
+  color: var(--color-cream);
+  border: 1.5px solid var(--color-gold);
+  border-radius: var(--radius-pill);
+  padding: 8px 14px;
+  display: none; /* Disembunyikan saat di Landing Page */
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  transition: var(--transition-smooth);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  user-select: none;
+}
+
+.live-audio-pill.is-active {
+  display: inline-flex;
+}
+
+.live-audio-pill:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+.audio-live-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #E74C3C;
+  flex-shrink: 0;
+  animation: audioPulseRed 1.2s infinite ease-in-out;
+}
+
+.live-audio-pill.is-speaking .audio-live-dot {
+  background: var(--color-gold);
+  animation: audioPulseGold 1.1s infinite ease-in-out;
+}
+
+.live-audio-pill.is-muted {
+  background: rgba(45, 52, 48, 0.92);
+  border-color: #88928A;
+}
+
+.live-audio-pill.is-muted .audio-live-dot {
+  background: #7F8C6A;
+  animation: none;
+}
+
+.audio-live-text {
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+@keyframes audioPulseRed {
+  0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+  70% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(231, 76, 60, 0); }
+  100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+}
+
+@keyframes audioPulseGold {
+  0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(200, 180, 138, 0.8); }
+  70% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(200, 180, 138, 0); }
+  100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(200, 180, 138, 0); }
+}
+
+/* Level 4 (z-index: 30): Bottom Navigation Bar (Fixed di Bawah) */
+.bottom-nav-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: rgba(30, 59, 47, 0.96);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 30;
+  padding: 0 12px;
+  gap: 8px;
+}
+
+.bottom-nav-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: transparent;
+  border: 1px solid transparent;
+  outline: none;
+  -webkit-appearance: none;
+  color: rgba(245, 240, 230, 0.72);
+  font-size: 13.5px;
+  font-weight: 700;
+  font-family: inherit;
+  padding: 8px 12px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  box-shadow: none;
+  transition: var(--transition-smooth);
+}
+
+.bottom-nav-tab:hover {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.bottom-nav-tab.is-active {
+  color: var(--color-gold);
+  background: rgba(200, 180, 138, 0.2);
+  border: 1px solid rgba(200, 180, 138, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Bottom Sheet / Drawer Ramping AI Guide */
+.ai-guide-bottom-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 52%;
+  background: var(--color-cream);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  border-top: 2px solid var(--color-gold);
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.25);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(105%);
+  transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+  padding: 12px 18px 20px;
+}
+
+.ai-guide-bottom-sheet.is-open {
+  transform: translateY(0%);
+}
+
+.drawer-drag-pill {
+  width: 40px;
+  height: 4.5px;
+  background: #C7BFB0;
+  border-radius: var(--radius-pill);
+  margin: 0 auto 10px;
+}
+
+.drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.drawer-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drawer-title-wrap h4 {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.btn-close-drawer {
+  background: rgba(30, 59, 47, 0.08);
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 14px;
+  color: var(--color-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drawer-chat-bubble {
+  background: #FFFFFF;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-primary);
+  margin-bottom: 12px;
+}
+
+.drawer-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.drawer-text-input {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid #D8D0BF;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+
+.drawer-btn-send {
+  padding: 12px 18px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: var(--color-cream);
+  font-weight: 700;
+  font-size: 13px;
+  border: none;
+  cursor: pointer;
+}
+
+/* Quick Prompts in Drawer */
+.drawer-quick-prompts {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  margin-bottom: 12px;
+  padding-bottom: 2px;
+}
+
+.drawer-quick-prompts::-webkit-scrollbar {
+  display: none;
+}
+
+.btn-quick-ask {
+  background: #FFFFFF;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  transition: var(--transition-smooth);
+}
+
+.btn-quick-ask:hover {
+  background: var(--color-secondary-soft);
+}
+
+/* Sembunyikan panel bawaan Leaflet Routing & Attribution agar tidak menutupi kontrol */
+.leaflet-routing-container,
+.leaflet-routing-alt,
+.leaflet-control-attribution {
+  display: none !important;
+}
+
+/* ========================================================
+   LAYAR 4: CHALLENGE MODE (MODE BERPETUALANG / MISI)
+   ======================================================== */
+.challenge-screen {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-cream);
+}
+
+.screen-header-bar {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--color-cream);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.screen-header-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.challenge-progress-banner {
+  padding: 12px 18px;
+  background: var(--color-card-cream);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.progress-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.progress-track-outer {
+  width: 100%;
+  height: 9px;
+  background: #E3DCCC;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.progress-track-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-secondary) 0%, var(--color-gold) 100%);
+  border-radius: var(--radius-pill);
+  transition: width 0.4s ease;
+}
+
+/* List Card Pos 1 sampai Pos 6 (Bersih & Lapang) */
+.challenge-cards-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 64px;
+}
+
+/* Card State 1: Pos SUDAH Selesai (Dark Forest #1E3B2F Solid) */
+.pos-card-completed {
+  background-color: var(--color-primary);
+  color: var(--color-cream);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pos-completed-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-gold);
+}
+
+.pos-completed-sub {
+  font-size: 12px;
+  color: #D3DAC8;
+  margin-top: 2px;
+}
+
+.badge-tercapai {
+  background: rgba(200, 180, 138, 0.22);
+  color: var(--color-gold);
+  border: 1px solid var(--color-gold);
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* Card State 2: Pos AKTIF (Card Cream #F5F0E6 + Border Tegas) */
+.pos-card-active {
+  background-color: #FFFFFF;
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  box-shadow: var(--shadow-elevated);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pos-active-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pos-active-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.badge-pos-active {
+  background: var(--color-primary);
+  color: var(--color-gold);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+}
+
+.pos-active-desc {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: #4A564E;
+}
+
+.pos-hint-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-secondary);
+}
+
+.pos-input-group {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.passcode-pill-input {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid #D5CEBD;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  outline: none;
+}
+
+.passcode-pill-input:focus {
+  border-color: var(--color-primary);
+}
+
+.btn-pill-submit-pos {
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: var(--color-gold);
+  font-size: 13px;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.btn-pill-submit-pos:hover {
+  background: var(--color-primary-light);
+}
+
+/* Card State 3: Pos TERKUNCI (Muted Grey) */
+.pos-card-locked {
+  background-color: #EAE3D5;
+  border: 1.5px dashed #C0B7A6;
+  border-radius: var(--radius-card);
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  opacity: 0.75;
+}
+
+.pos-locked-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #6A726B;
+}
+
+/* Challenge Map Subview */
+.challenge-map-view {
+  position: absolute;
+  top: 104px;
+  left: 0;
+  right: 0;
+  bottom: 60px;
+  z-index: 15;
+  display: none;
+}
+
+.challenge-map-view.is-visible {
+  display: block;
+}
+
+/* Floating Route Navigation Card on Map */
+.challenge-route-guide-card {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 25;
+  background: var(--color-primary);
+  color: var(--color-cream);
+  border-radius: var(--radius-card);
+  padding: 12px 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  border: 1.5px solid rgba(200, 180, 138, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: slideUpGuide 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+@keyframes slideUpGuide {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.challenge-route-guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.challenge-target-pos-pill {
+  background: var(--color-gold);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.challenge-guide-title-box {
+  flex: 1;
+  min-width: 0;
+}
+
+.challenge-guide-title-box h4 {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #FFFFFF;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.challenge-guide-sub {
+  font-size: 10.5px;
+  color: #D3DAC8;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-icon-reselect {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--color-gold);
+  font-size: 13px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: var(--transition-smooth);
+}
+
+.btn-icon-reselect:hover {
+  background: rgba(200, 180, 138, 0.25);
+  transform: rotate(45deg);
+}
+
+.challenge-route-desc {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: #EDE8DC;
+  background: rgba(0, 0, 0, 0.15);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--color-gold);
+}
+
+.challenge-route-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-challenge-cue,
+.btn-challenge-input-code {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: var(--transition-smooth);
+  border: none;
+}
+
+.btn-challenge-cue {
+  background: var(--color-gold);
+  color: var(--color-primary);
+}
+
+.btn-challenge-cue:hover {
+  filter: brightness(1.08);
+}
+
+.btn-challenge-input-code {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #FFFFFF;
+}
+
+.btn-challenge-input-code:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* Modal Tanya Mulai dari Pos Mana */
+.challenge-start-modal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s;
+}
+
+.challenge-start-modal.is-open {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.challenge-modal-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(18, 34, 27, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.challenge-modal-card {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-height: 85%;
+  background: var(--color-cream);
+  border-top-left-radius: 26px;
+  border-top-right-radius: 26px;
+  border-top: 3px solid var(--color-gold);
+  padding: 14px 18px 24px;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.challenge-start-modal.is-open .challenge-modal-card {
+  transform: translateY(0);
+}
+
+.challenge-modal-handle {
+  width: 44px;
+  height: 5px;
+  background: #C7BFB0;
+  border-radius: var(--radius-pill);
+  margin: 0 auto 10px;
+}
+
+.challenge-modal-header {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.challenge-modal-badge {
+  display: inline-block;
+  background: var(--color-secondary-soft);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 12px;
+  border-radius: var(--radius-pill);
+  margin-bottom: 6px;
+}
+
+.challenge-modal-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-primary);
+  letter-spacing: -0.3px;
+}
+
+.challenge-modal-desc {
+  font-size: 12px;
+  color: var(--color-secondary);
+  line-height: 1.4;
+  margin-top: 4px;
+  padding: 0 8px;
+}
+
+.challenge-pos-selection-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  max-height: 340px;
+  padding-right: 2px;
+  margin-top: 4px;
+}
+
+.challenge-pos-select-btn {
+  background: #FFFFFF;
+  border: 1.5px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  padding: 11px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.challenge-pos-select-btn:hover {
+  border-color: var(--color-primary);
+  background: #FAF7F0;
+  transform: translateX(3px);
+}
+
+.challenge-pos-select-btn.is-suggested {
+  border-color: var(--color-gold);
+  background: linear-gradient(135deg, #FFFFFF 0%, #FAF6EE 100%);
+  box-shadow: 0 3px 10px rgba(200, 180, 138, 0.2);
+}
+
+.pos-btn-num-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-gold);
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.challenge-pos-select-btn.is-suggested .pos-btn-num-badge {
+  background: var(--color-gold);
+  color: var(--color-primary);
+}
+
+.pos-btn-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pos-btn-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.pos-btn-name {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.pos-btn-sub {
+  font-size: 11px;
+  color: #6C7770;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badge-rekomendasi {
+  background: var(--color-primary);
+  color: var(--color-gold);
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+/* ========================================================
+   LAYAR 5: JOGGING MODE (TRACK GUIDE & AUDIO NAVIGATION)
+   ======================================================== */
+.jogging-screen {
+  width: 100%;
+  height: 100%;
+}
+
+/* Level 1 (z-index: 1): Map Track Lari */
+.jogging-map-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Level 3 (z-index: 20): Card Statistik Melayang di TOP (Bawah Header Back) */
+.jogging-floating-stats {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  z-index: 20;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  padding: 10px 14px;
+  box-shadow: var(--shadow-elevated);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.jogging-top-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.jogging-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jogging-title-wrap h4 {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.jogging-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  text-align: center;
+}
+
+.metric-box {
+  background: var(--color-cream);
+  padding: 6px 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #E4DCCB;
+}
+
+.metric-val {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.metric-lbl {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--color-secondary);
+}
+
+/* Level 3 (z-index: 20): Card Panduan Suara / Langkah Melayang di BOTTOM (Di Atas Bottom Nav Bar) */
+.jogging-audio-nav-card {
+  position: absolute;
+  bottom: 76px;
+  left: 14px;
+  right: 14px;
+  z-index: 20;
+  background: var(--color-primary);
+  color: var(--color-cream);
+  border-radius: var(--radius-card);
+  padding: 12px 14px;
+  box-shadow: var(--shadow-elevated);
+  border: 1px solid rgba(200, 180, 138, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.audio-nav-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Badge Khusus "Langkah 1/6" Ber-padding Agar Tidak Menabrak Border */
+.badge-step-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-gold);
+  color: var(--color-primary);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.audio-nav-step-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--color-gold);
+}
+
+.audio-nav-prompt-text {
+  font-size: 11.5px;
+  line-height: 1.35;
+  font-style: italic;
+  color: #EDE8DC;
+}
+
+.audio-nav-controls-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.pill-btn-nav-sim {
+  flex: 1;
+  padding: 8px 6px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: var(--transition-smooth);
+}
+
+.pill-btn-nav-sim.btn-speak-cue {
+  background: var(--color-gold);
+  color: var(--color-primary);
+  border-color: var(--color-gold);
+}
+
+/* ========================================================
+   LEAFLET CUSTOM MARKERS & POPUP
+   ======================================================== */
+.custom-pin-marker {
+  width: 32px;
+  height: 32px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.custom-pin-marker .pin-icon {
+  transform: rotate(45deg);
+  font-size: 14px;
+}
+
+.user-radar-beacon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(200, 180, 138, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: radarWave 2s infinite ease-out;
+}
+
+.user-radar-center {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: 2px solid #FFFFFF;
+}
+
+@keyframes radarWave {
+  0% { transform: scale(0.9); opacity: 1; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.challenge-map-pin {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: 2.5px solid var(--color-gold);
+  color: var(--color-gold);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 800;
+  font-size: 12.5px;
+  box-shadow: var(--shadow-gold);
+}
+
+.challenge-map-pin.is-completed {
+  background: var(--color-secondary);
+  color: #FFFFFF;
+  border-color: #FFFFFF;
+}
+
+.challenge-map-pin.is-active {
+  transform: scale(1.15);
+  border-color: #FFFFFF;
+}
+
+/* Leaflet Popup Styling */
+.leaflet-popup-content-wrapper {
+  background: #FAF7F0 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22) !important;
+  border: 1.5px solid rgba(30, 59, 47, 0.15) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px !important;
+  line-height: 1.4 !important;
+}
+
+.leaflet-popup-tip {
+  background: #FAF7F0 !important;
+}
+
+.map-popup-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 180px;
+  max-width: 220px;
+}
+
+.popup-tag-forest {
+  background: var(--color-primary);
+  color: var(--color-cream);
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  align-self: flex-start;
+}
+
+.popup-tag-musholla {
+  background: var(--color-primary);
+  color: var(--color-gold);
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  align-self: flex-start;
+}
+
+.popup-tag-sage {
+  background: var(--color-secondary);
+  color: #FFFFFF;
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  align-self: flex-start;
+}
+
+.popup-tag-gold {
+  background: var(--color-gold);
+  color: var(--color-primary);
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  align-self: flex-start;
+}
+
+.popup-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--color-primary);
+  margin-top: 2px;
+}
+
+.popup-desc {
+  font-size: 11px;
+  color: #556258;
+  line-height: 1.35;
+}
+
+.popup-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-secondary);
+}
+
+.popup-nav-btn {
+  margin-top: 6px;
+  padding: 7px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: var(--color-cream);
+  font-size: 11px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+}
+
+/* Toast Notification */
+.nesa-toast-pill {
+  position: absolute;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: var(--color-primary);
+  color: var(--color-cream);
+  padding: 9px 18px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-gold);
+  box-shadow: var(--shadow-elevated);
+  font-size: 12px;
+  font-weight: 700;
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  white-space: nowrap;
+}
+
+.nesa-toast-pill.is-show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

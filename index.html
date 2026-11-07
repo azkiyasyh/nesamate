@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#1E3B2F">
+  <meta name="description" content="NesaMate - AI Virtual Tour Guide & Navigasi Kampus Hutan UNESA Lidah Wetan">
+  <title>NesaMate | AI Virtual Tour Guide Hutan UNESA</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- Leaflet Routing Machine CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+
+  <!-- Custom CSS Design System (Anti-Bertumpuk & Safari Natural) -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ========================================================
+       MOBILE DEVICE CONTAINER (TARGET VIEWPORT 9:16)
+       ======================================================== -->
+  <div class="mobile-device-container">
+
+    <!-- ========================================================
+         LAYAR 1: LANDING PAGE (ONBOARDING)
+         ======================================================== -->
+    <section id="screen-landing" class="screen-view landing-screen is-active">
+      <div class="landing-header">
+        <span class="brand-badge-pill">Kampus Hutan UNESA Lidah Wetan</span>
+        <h1 class="landing-title">NesaMate</h1>
+        <p class="landing-subtitle">AI Virtual Tour Guide & Navigasi Cerdas</p>
+      </div>
+
+      <!-- Mascot Nesa Si Rusa Teaser -->
+      <div class="landing-hero-mascot">
+        <!-- TODO: REPLACE WITH LIVE2D CUBISM SDK & PIXIJS CANVAS HERE -->
+        <svg viewBox="0 0 200 200" width="100%" height="100%">
+          <defs>
+            <linearGradient id="deerCoat1" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#DE9E62"/>
+              <stop offset="100%" stop-color="#C58448"/>
+            </linearGradient>
+            <linearGradient id="antlerGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#9C6B3E"/>
+              <stop offset="100%" stop-color="#7A4E26"/>
+            </linearGradient>
+          </defs>
+          <path d="M70 145 C65 175, 45 195, 40 200 L160 200 C155 195, 135 175, 130 145 Z" fill="url(#deerCoat1)"/>
+          <path d="M85 155 C85 180, 115 180, 115 155 Z" fill="#F5F0E6"/>
+          <path d="M60 140 Q100 162 140 140 Q130 156 100 160 Q70 156 60 140 Z" fill="#1E3B2F"/>
+          <circle cx="100" cy="158" r="6" fill="#C8B48A"/>
+          <path d="M65 85 C35 65, 30 95, 55 105 Z" fill="url(#deerCoat1)"/>
+          <path d="M60 87 C42 74, 40 95, 55 101 Z" fill="#FAD4B2"/>
+          <path d="M135 85 C165 65, 170 95, 145 105 Z" fill="url(#deerCoat1)"/>
+          <path d="M140 87 C158 74, 160 95, 145 101 Z" fill="#FAD4B2"/>
+          <path d="M78 72 C74 48, 62 42, 54 36 C56 46, 68 50, 72 58 C62 54, 52 56, 48 60 C56 65, 66 66, 75 74 Z" fill="url(#antlerGrad1)"/>
+          <path d="M122 72 C126 48, 138 42, 146 36 C144 46, 132 50, 128 58 C138 54, 148 56, 152 60 C144 65, 134 66, 125 74 Z" fill="url(#antlerGrad1)"/>
+          <ellipse cx="100" cy="105" rx="42" ry="38" fill="url(#deerCoat1)"/>
+          <ellipse cx="100" cy="118" rx="26" ry="18" fill="#F5F0E6"/>
+          <circle cx="100" cy="80" r="2.5" fill="#FFFFFF" opacity="0.85"/>
+          <circle cx="92" cy="85" r="2" fill="#FFFFFF" opacity="0.85"/>
+          <circle cx="108" cy="85" r="2" fill="#FFFFFF" opacity="0.85"/>
+          <ellipse cx="72" cy="116" rx="6" ry="4" fill="#FFAAA6" opacity="0.6"/>
+          <ellipse cx="128" cy="116" rx="6" ry="4" fill="#FFAAA6" opacity="0.6"/>
+          <ellipse cx="80" cy="102" rx="6" ry="7.5" fill="#1E3B2F"/>
+          <circle cx="78" cy="99" r="2.5" fill="#FFFFFF"/>
+          <ellipse cx="120" cy="102" rx="6" ry="7.5" fill="#1E3B2F"/>
+          <circle cx="118" cy="99" r="2.5" fill="#FFFFFF"/>
+          <path d="M95 113 C95 110, 105 110, 105 113 C105 116, 100 118, 95 113 Z" fill="#4A2E16"/>
+          <path d="M94 121 Q100 126 106 121" stroke="#4A2E16" stroke-width="2" stroke-linecap="round" fill="none"/>
+        </svg>
+      </div>
+
+      <!-- Form Input Pill Gray/Soft -->
+      <div class="landing-form-box">
+        <input type="text" id="input-user-name" class="pill-input" placeholder="Masukkan Nama Anda..." maxlength="25" autocomplete="off" />
+        <button id="btn-start" class="pill-btn-start">
+          <span>START</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         LAYAR 2: GREETING & PILIH MODE (MAIN ONBOARDING)
+         ======================================================== -->
+    <section id="screen-greeting" class="screen-view greeting-screen">
+      <div class="greeting-brand-top">
+        <span>🌿 Hutan Kota UNESA</span>
+      </div>
+
+      <!-- Floating Speech Bubble di Atas Kepala Nesa -->
+      <div class="speech-bubble-floating">
+        <p id="greeting-speech-text" class="speech-bubble-text">
+          "Halo Teman! Aku Nesa si Rusa, pemandu wisatamu hari ini di Hutan Kota UNESA. Mau mulai dari eksplorasi bebas, berpetualang, atau jogging?"
+        </p>
+      </div>
+
+      <!-- Avatar Nesa Si Rusa Tampil BESAR di Tengah Layar -->
+      <!-- TODO: REPLACE WITH LIVE2D CUBISM SDK & PIXIJS CANVAS HERE -->
+      <div class="mascot-stage-big">
+        <svg viewBox="0 0 200 200" width="100%" height="100%">
+          <defs>
+            <linearGradient id="deerCoat2" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#DE9E62"/>
+              <stop offset="100%" stop-color="#C58448"/>
+            </linearGradient>
+            <linearGradient id="antlerGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#9C6B3E"/>
+              <stop offset="100%" stop-color="#7A4E26"/>
+            </linearGradient>
+            <linearGradient id="scarfGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#1E3B2F"/>
+              <stop offset="100%" stop-color="#2D5444"/>
+            </linearGradient>
+          </defs>
+          <path d="M70 145 C65 175, 45 195, 40 200 L160 200 C155 195, 135 175, 130 145 Z" fill="url(#deerCoat2)"/>
+          <path d="M85 155 C85 180, 115 180, 115 155 Z" fill="#F5F0E6"/>
+          <path d="M60 140 Q100 162 140 140 Q130 156 100 160 Q70 156 60 140 Z" fill="url(#scarfGrad2)"/>
+          <path d="M93 158 L107 158 L104 182 L96 182 Z" fill="#1E3B2F"/>
+          <circle cx="100" cy="158" r="6" fill="#C8B48A" stroke="#1E3B2F" stroke-width="1.5"/>
+          <path d="M65 85 C35 65, 30 95, 55 105 Z" fill="url(#deerCoat2)"/>
+          <path d="M60 87 C42 74, 40 95, 55 101 Z" fill="#FAD4B2"/>
+          <path d="M135 85 C165 65, 170 95, 145 105 Z" fill="url(#deerCoat2)"/>
+          <path d="M140 87 C158 74, 160 95, 145 101 Z" fill="#FAD4B2"/>
+          <path d="M78 72 C74 48, 62 42, 54 36 C56 46, 68 50, 72 58 C62 54, 52 56, 48 60 C56 65, 66 66, 75 74 Z" fill="url(#antlerGrad2)"/>
+          <path d="M122 72 C126 48, 138 42, 146 36 C144 46, 132 50, 128 58 C138 54, 148 56, 152 60 C144 65, 134 66, 125 74 Z" fill="url(#antlerGrad2)"/>
+          <ellipse cx="100" cy="105" rx="42" ry="38" fill="url(#deerCoat2)"/>
+          <ellipse cx="100" cy="118" rx="26" ry="18" fill="#F5F0E6"/>
+          <circle cx="100" cy="80" r="2.5" fill="#FFFFFF" opacity="0.85"/>
+          <circle cx="92" cy="85" r="2" fill="#FFFFFF" opacity="0.85"/>
+          <circle cx="108" cy="85" r="2" fill="#FFFFFF" opacity="0.85"/>
+          <ellipse cx="72" cy="116" rx="6" ry="4" fill="#FFAAA6" opacity="0.6"/>
+          <ellipse cx="128" cy="116" rx="6" ry="4" fill="#FFAAA6" opacity="0.6"/>
+          <ellipse cx="80" cy="102" rx="6" ry="7.5" fill="#1E3B2F"/>
+          <circle cx="78" cy="99" r="2.5" fill="#FFFFFF"/>
+          <circle cx="82" cy="104" r="1.2" fill="#FFFFFF"/>
+          <ellipse cx="120" cy="102" rx="6" ry="7.5" fill="#1E3B2F"/>
+          <circle cx="118" cy="99" r="2.5" fill="#FFFFFF"/>
+          <circle cx="122" cy="104" r="1.2" fill="#FFFFFF"/>
+          <path d="M74 92 Q80 90 86 93" stroke="#7A4E26" stroke-width="2" stroke-linecap="round" fill="none"/>
+          <path d="M126 92 Q120 90 114 93" stroke="#7A4E26" stroke-width="2" stroke-linecap="round" fill="none"/>
+          <path d="M95 113 C95 110, 105 110, 105 113 C105 116, 100 118, 95 113 Z" fill="#4A2E16"/>
+          <path d="M94 121 Q100 126 106 121" stroke="#4A2E16" stroke-width="2" stroke-linecap="round" fill="none"/>
+        </svg>
+      </div>
+
+      <!-- 3 Pilihan Tombol Pill (Dark Forest / Sage) di Bawah -->
+      <div class="mode-selection-group">
+        <button id="btn-select-free-mode" class="pill-mode-btn btn-dark-forest">
+          <span>🌿</span> Mode Eksplorasi
+        </button>
+        <button id="btn-select-challenge-mode" class="pill-mode-btn btn-sage">
+          <span>🎯</span> Mode Berpetualang
+        </button>
+        <button id="btn-select-jogging-mode" class="pill-mode-btn btn-dark-forest">
+          <span>🏃</span> Mode Jogging
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         LAYAR 3: FREE MODE (MODE EKSPLORASI BEBAS & MAPS)
+         ======================================================== -->
+    <section id="screen-free-mode" class="screen-view free-mode-screen">
+      <!-- Fullscreen Leaflet Map -->
+      <div id="free-map-container" class="map-fullscreen-container"></div>
+
+      <!-- Top Bar Minimalis & Filter POI (Unified Card Glassmorphism) -->
+      <header class="free-top-bar">
+        <div class="free-nav-header-card">
+          <div class="top-bar-row">
+            <button id="btn-free-back" class="btn-icon-back" title="Kembali ke Pilihan Mode">←</button>
+            <div class="title-pill-badge">🌿 Hutan Kota UNESA</div>
+            <button id="btn-free-recenter" class="btn-icon-back" title="Pusatkan ke Kampus">📍</button>
+          </div>
+
+          <!-- Container Horizontal Scrollable POI Filter Chips -->
+          <div class="poi-filter-scroll-wrapper">
+            <div class="poi-filter-chips-row">
+              <button class="pill-chip-filter is-active" data-category="hutan">
+                <span>🌲</span> Spot Hutan
+              </button>
+              <button class="pill-chip-filter is-active" data-category="musholla">
+                <span>🕌</span> Musholla
+              </button>
+              <button class="pill-chip-filter is-active" data-category="parkiran">
+                <span>🅿️</span> Parkiran
+              </button>
+              <button class="pill-chip-filter is-active" data-category="toilet">
+                <span>🚻</span> Toilet
+              </button>
+              <button class="pill-chip-filter is-active" data-category="gerbang">
+                <span>🚪</span> Gerbang
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Bottom Left: Mini Avatar Thumbnail Nesa Melayang -->
+      <!-- TODO: REPLACE WITH LIVE2D CUBISM SDK & PIXIJS CANVAS HERE -->
+      <div id="btn-mini-avatar-trigger" class="mini-avatar-fab-left" title="Tanya Nesa si Rusa">
+        <div class="mini-avatar-box">
+          <svg viewBox="0 0 200 200" width="100%" height="100%">
+            <ellipse cx="100" cy="105" rx="42" ry="38" fill="#DE9E62"/>
+            <ellipse cx="100" cy="118" rx="26" ry="18" fill="#F5F0E6"/>
+            <path d="M78 72 C74 48, 62 42, 54 36 C56 46, 68 50, 72 58 Z" fill="#7A4E26"/>
+            <path d="M122 72 C126 48, 138 42, 146 36 C144 46, 132 50, 128 58 Z" fill="#7A4E26"/>
+            <ellipse cx="80" cy="102" rx="6" ry="7.5" fill="#1E3B2F"/>
+            <circle cx="78" cy="99" r="2.5" fill="#FFFFFF"/>
+            <ellipse cx="120" cy="102" rx="6" ry="7.5" fill="#1E3B2F"/>
+            <circle cx="118" cy="99" r="2.5" fill="#FFFFFF"/>
+            <path d="M95 113 C95 110, 105 110, 105 113 Z" fill="#4A2E16"/>
+            <path d="M94 121 Q100 126 106 121" stroke="#4A2E16" stroke-width="2" fill="none"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Bottom Navigation Bar (Fixed di Bawah: Tab Peta | Tab AI Guide) -->
+      <nav class="bottom-nav-bar">
+        <button id="nav-tab-free-map" class="bottom-nav-tab is-active">
+          <span>📍</span> Peta
+        </button>
+        <button id="nav-tab-free-guide" class="bottom-nav-tab">
+          <span>✨</span> AI Guide
+        </button>
+      </nav>
+
+      <!-- Bottom Sheet / Drawer Ramping AI Guide -->
+      <div id="drawer-ai-guide" class="ai-guide-bottom-sheet">
+        <div class="drawer-drag-pill"></div>
+        <div class="drawer-header">
+          <div class="drawer-title-wrap">
+            <span>✨</span>
+            <h4>Nesa si Rusa (Virtual Guide)</h4>
+          </div>
+          <button id="btn-close-drawer" class="btn-close-drawer">✕</button>
+        </div>
+
+        <div id="drawer-chat-bubble" class="drawer-chat-bubble">
+          "Halo! Tanyakan fasilitas di Hutan UNESA atau langsung bicara kapan saja via live audio."
+        </div>
+
+        <!-- Quick Ask Prompts -->
+        <div class="drawer-quick-prompts">
+          <button class="btn-quick-ask" onclick="window.nesaApp.handleUserVoiceQuery('cari musholla')">🕌 Musholla</button>
+          <button class="btn-quick-ask" onclick="window.nesaApp.handleUserVoiceQuery('cari toilet')">🚻 Toilet</button>
+          <button class="btn-quick-ask" onclick="window.nesaApp.handleUserVoiceQuery('spot hutan')">🌲 Spot Hutan</button>
+          <button class="btn-quick-ask" onclick="window.nesaApp.handleUserVoiceQuery('parkiran')">🅿️ Parkiran</button>
+          <button class="btn-quick-ask" onclick="window.nesaApp.handleUserVoiceQuery('gerbang masuk')">🚪 Gerbang</button>
+        </div>
+
+        <div class="drawer-input-row">
+          <input type="text" id="drawer-user-input" class="drawer-text-input" placeholder="Tanya Nesa (contoh: cari musholla)..." />
+          <button id="btn-drawer-send" class="drawer-btn-send">Kirim</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         LAYAR 4: CHALLENGE MODE (MODE BERPETUALANG / MISI)
+         ======================================================== -->
+    <section id="screen-challenge-mode" class="screen-view challenge-screen">
+      <!-- Screen Header Bar -->
+      <header class="screen-header-bar">
+        <button id="btn-challenge-back" class="btn-icon-back">←</button>
+        <h2 class="screen-header-title">Mode Berpetualang</h2>
+      </header>
+
+      <!-- Progress Bar (Misi Tercapai X/6) -->
+      <div class="challenge-progress-banner">
+        <div class="progress-label-row">
+          <span>Misi Pameran Pos</span>
+          <span id="challenge-progress-text">0/6 Selesai</span>
+        </div>
+        <div class="progress-track-outer">
+          <div id="challenge-progress-fill" class="progress-track-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- Tab Subview 1: List Card Pos 1 sampai Pos 6 -->
+      <div id="challenge-cards-container" class="challenge-cards-scroll">
+        <!-- Rendered dynamically by app.js:
+             - Pos Selesai (Dark Forest #1E3B2F Solid)
+             - Pos Aktif (Card Cream #F5F0E6 + Border Tegas + Input Kata Kunci)
+             - Pos Terkunci (Muted Grey 🔒) -->
+      </div>
+
+      <!-- Tab Subview 2: Peta Lokasi Pos Challenge (Muncul saat Tab Peta diklik) -->
+      <div id="challenge-map-subview" class="challenge-map-view">
+        <div id="challenge-map-container" style="width:100%; height:100%;"></div>
+
+        <!-- Floating Route Navigation Card on Map -->
+        <div id="challenge-route-guide-card" class="challenge-route-guide-card">
+          <div class="challenge-route-guide-header">
+            <div class="challenge-target-pos-pill">
+              <span id="challenge-guide-pos-badge">Pos 1</span>
+            </div>
+            <div class="challenge-guide-title-box">
+              <h4 id="challenge-guide-pos-name">Plaza Rektorat</h4>
+              <span id="challenge-guide-mission-title" class="challenge-guide-sub">Tantangan Sensor Kualitas Udara</span>
+            </div>
+            <button id="btn-reselect-challenge-pos" class="btn-icon-reselect" title="Ganti Pos Awal">🔄</button>
+          </div>
+          <p id="challenge-guide-route-desc" class="challenge-route-desc">
+            Arahkan langkahmu ke area Plaza depan Gedung Rektorat UNESA. Cari tim penjaga yang membawa sensor mikroklimat udara.
+          </p>
+          <div class="challenge-route-actions">
+            <button id="btn-challenge-hear-cue" class="btn-challenge-cue">
+              🔊 Dengar Rute
+            </button>
+            <button id="btn-challenge-open-mission" class="btn-challenge-input-code">
+              📝 Input Kata Kunci
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Tanya Mulai dari Pos Mana -->
+      <div id="challenge-start-modal" class="challenge-start-modal">
+        <div class="challenge-modal-backdrop" id="challenge-modal-backdrop"></div>
+        <div class="challenge-modal-card">
+          <div class="challenge-modal-handle"></div>
+          <div class="challenge-modal-header">
+            <div class="challenge-modal-badge">🦌 Nesa si Pemandu</div>
+            <h3 class="challenge-modal-title">Mau Mulai dari Mana?</h3>
+            <p class="challenge-modal-desc">
+              Pilih pos petualangan pertamamu. Nesa akan langsung menjelaskan rute dan menampilkannya di peta!
+            </p>
+          </div>
+          <div id="challenge-pos-selection-list" class="challenge-pos-selection-list">
+            <!-- Diisi secara dinamis oleh JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Navigation Bar: Tab Peta | Tab Misi -->
+      <nav class="bottom-nav-bar">
+        <button id="nav-tab-challenge-misi" class="bottom-nav-tab is-active">
+          <span>🎯</span> Misi
+        </button>
+        <button id="nav-tab-challenge-map" class="bottom-nav-tab">
+          <span>📍</span> Peta Rute
+        </button>
+      </nav>
+    </section>
+
+    <!-- ========================================================
+         LAYAR 5: JOGGING MODE (TRACK GUIDE & AUDIO NAVIGATION)
+         ======================================================== -->
+    <section id="screen-jogging-mode" class="screen-view jogging-screen">
+      <!-- Fullscreen Map Track Lari -->
+      <div id="jogging-map-container" class="jogging-map-container"></div>
+
+      <!-- Floating Running Info Widget di Atas -->
+      <div class="jogging-floating-stats">
+        <div class="jogging-top-header-row">
+          <div class="jogging-title-wrap">
+            <button id="btn-jogging-back" class="btn-icon-back" style="width:30px; height:30px; font-size:14px;">←</button>
+            <h4>Loop Hutan UNESA</h4>
+          </div>
+          <span class="badge-tercapai" style="padding: 3px 10px; font-size: 11px;">Track Aktif</span>
+        </div>
+
+        <div class="jogging-metric-grid">
+          <div class="metric-box">
+            <div class="metric-val">2.35 km</div>
+            <div class="metric-lbl">Jarak / Loop</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-val">16 Menit</div>
+            <div class="metric-lbl">Est. Waktu</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-val">175 kkal</div>
+            <div class="metric-lbl">Kalori Bakar</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating Audio Navigation Widget di Bawah (Di Atas Bottom Nav) -->
+      <div class="jogging-audio-nav-card">
+        <div class="audio-nav-header-row">
+          <span id="jogging-nav-step-badge" class="badge-step-pill">Langkah 1/6</span>
+          <span id="jogging-nav-step-title" class="audio-nav-step-title">Koridor Rektorat</span>
+        </div>
+        <p id="jogging-nav-prompt-text" class="audio-nav-prompt-text">
+          "Halo! Kita mulai pemanasan dari Koridor Rektorat. Udara pagi kampus sangat sejuk."
+        </p>
+
+        <div class="audio-nav-controls-row">
+          <button id="btn-jogging-prev-step" class="pill-btn-nav-sim">◀ Lalu</button>
+          <button id="btn-jogging-voice-cue" class="pill-btn-nav-sim btn-speak-cue">🔊 Dengar</button>
+          <button id="btn-jogging-next-step" class="pill-btn-nav-sim">Depan ▶</button>
+        </div>
+      </div>
+
+      <!-- Bottom Navigation Bar (Tab Track Lari | Tab Panduan Suara) -->
+      <nav class="bottom-nav-bar">
+        <button id="nav-tab-jogging-track" class="bottom-nav-tab is-active">
+          <span>📍</span> Track Lari
+        </button>
+        <button id="nav-tab-jogging-audio" class="bottom-nav-tab">
+          <span>🔊</span> Panduan Suara
+        </button>
+      </nav>
+    </section>
+
+    <!-- Indikator Visual Melayang: Live Audio Connected (Hands-Free Real-Time Audio Call) -->
+    <div id="live-audio-pill" class="live-audio-pill" title="Status Live Audio Nesa (Ketuk untuk Jeda/Bicara)">
+      <span class="audio-live-dot"></span>
+      <span id="live-audio-status-label" class="audio-live-text">🔴 Live Audio Connected</span>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="nesa-toast-pill" class="nesa-toast-pill">Pesan</div>
+
+  </div>
+
+  <!-- Leaflet Core & Routing Machine Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+  <!-- Modular Scripts -->
+  <script src="js/data.js"></script>
+  <script src="js/speech.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
