@@ -282,12 +282,15 @@ class NesaMapManager {
     }
     const spot = (NESA_DATA.spots || []).find(s => s.id === cleanId);
     if (spot && this.map) {
-      this.map.flyTo([spot.lat, spot.lng], 18, { duration: 1.0 });
+      // Jika tidak ada rute aktif, baru flyTo. Jika rute aktif, biarkan fitBounds agar garis rute terlihat utuh!
+      if (!this.activePolyline) {
+        this.map.flyTo([spot.lat, spot.lng], 17.5, { duration: 1.0 });
+      }
       const marker = this.spotMarkers[cleanId];
       if (marker) {
         setTimeout(() => {
           marker.openPopup();
-        }, 800);
+        }, 500);
       }
     }
   }
@@ -323,13 +326,29 @@ class NesaMapManager {
       iconAnchor: [13, 13]
     });
 
+    // Posisi awal default di kawasan Hutan UNESA
     this.userCoordinates = [-7.3002, 112.6738];
     this.userMarker = L.marker(this.userCoordinates, { icon: userIcon, zIndexOffset: 1000 }).addTo(this.map);
 
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          this.userCoordinates = [pos.coords.latitude, pos.coords.longitude];
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+
+          // Hitung jarak ke pusat Hutan UNESA (-7.3005, 112.6740)
+          // Jika user di luar radius 1.5 km (sedang testing di kos/rumah), tetap gunakan titik simulasi UNESA
+          const dLat = lat - (-7.3005);
+          const dLng = lng - 112.6740;
+          const distKm = Math.sqrt(dLat * dLat + dLng * dLng) * 111;
+
+          if (distKm <= 1.5) {
+            this.userCoordinates = [lat, lng];
+          } else {
+            console.log(`[NesaMate GPS] Lokasi riil (${lat.toFixed(4)}, ${lng.toFixed(4)}) di luar kawasan UNESA (${distKm.toFixed(1)} km). Menggunakan titik awal simulasi Hutan UNESA.`);
+            this.userCoordinates = [-7.3002, 112.6738];
+          }
+
           if (this.userMarker) {
             this.userMarker.setLatLng(this.userCoordinates);
           }
