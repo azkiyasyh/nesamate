@@ -422,6 +422,11 @@
       <span id="live-audio-status-label" class="audio-live-text">🔴 Live Audio Connected</span>
     </div>
 
+    <!-- FLOATING AI LATENCY BADGE -->
+    <div id="ai-latency-badge" class="ai-latency-badge" style="display:none; position:fixed; top:12px; right:12px; background:rgba(30,59,47,0.92); color:#F5F0E6; padding:6px 12px; border-radius:20px; font-size:11px; z-index:9999; border:1px solid #C8B48A; font-family:monospace; box-shadow:0 4px 12px rgba(0,0,0,0.25);">
+      ⚡ <span id="ai-latency-text">0.0s</span>
+    </div>
+
     <!-- TOAST NOTIFICATION -->
     <div id="nesa-toast-pill" class="nesa-toast-pill">Pesan</div>
 
@@ -432,10 +437,10 @@
   <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
   <!-- Modular Scripts -->
-  <script src="js/data.js"></script>
-  <script src="js/speech.js"></script>
-  <script src="js/map.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/data.js?v=2.1.1"></script>
+  <script src="js/speech.js?v=2.1.1"></script>
+  <script src="js/map.js?v=2.1.1"></script>
+  <script src="js/app.js?v=2.1.1"></script>
 
 </body>
 </html>

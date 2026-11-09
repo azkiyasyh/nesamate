@@ -1,11 +1,74 @@
 [
   {
     "post_id": 1,
-    "group_id": "kelompok_a",
-    "title": "Monitoring Mikroklimat Hutan",
-    "summary": "Sistem sensor suhu dan kelembapan mikroklimat udara pelataran rektorat UNESA.",
-    "lat": -7.3005,
-    "lng": 112.6740,
-    "keyword_hash": ""
+    "name": "Pos 1: Plaza Rektorat",
+    "title": "Tantangan Sensor Kualitas Udara",
+    "description": "Temui tim penjaga di depan Rektorat dan amati sensor pemantau mikroklimat.",
+    "route_guide": "Arahkan langkahmu ke area Plaza depan Gedung Rektorat UNESA. Cari tim penjaga yang membawa sensor mikroklimat udara di pelataran utama.",
+    "short_hint": "Plaza Depan Gedung Rektorat",
+    "lat": -7.2998,
+    "lng": 112.6746,
+    "keyword": "NESA1",
+    "badge": "🏅 Sahabat Udara Bersih"
+  },
+  {
+    "post_id": 2,
+    "name": "Pos 2: Dermaga Danau",
+    "title": "Tantangan Ekosistem Air",
+    "description": "Lakukan uji kejernihan air danau dan mintalah kata kunci kelulusan dari tim.",
+    "route_guide": "Berjalanlah ke arah selatan menuju tepian Danau UNESA. Di dekat dermaga danau, temui tim penguji ekosistem air.",
+    "short_hint": "Dermaga Danau UNESA",
+    "lat": -7.3015,
+    "lng": 112.6732,
+    "keyword": "DANAU",
+    "badge": "💧 Penjaga Danau Asri"
+  },
+  {
+    "post_id": 3,
+    "name": "Pos 3: Pintu Masuk Hutan",
+    "title": "Tantangan Kenali Pohon Rimbun",
+    "description": "Identifikasi pohon Trembesi tertua di gerbang masuk hutan bersama pemandu.",
+    "route_guide": "Menujulah ke sisi barat kampus di Pintu Masuk Hutan UNESA. Di sana kamu akan menemukan gerbang rimbun dan pohon Trembesi tertua bersama pemandu rimba.",
+    "short_hint": "Pintu Masuk Barat Hutan UNESA",
+    "lat": -7.3006,
+    "lng": 112.6708,
+    "keyword": "HUTAN",
+    "badge": "🌲 Penjelajah Rimba"
+  },
+  {
+    "post_id": 4,
+    "name": "Pos 4: Observasi Flora & Burung",
+    "title": "Tantangan Suara Satwa Alami",
+    "description": "Dengarkan kicauan burung pemakan serangga di pos observasi kanopi.",
+    "route_guide": "Masuklah ke jalur setapak hutan menuju Pusat Observasi Flora dan Burung. Dengarkan kicauan satwa alami di bawah kanopi rindang.",
+    "short_hint": "Observasi Flora & Satwa",
+    "lat": -7.3025,
+    "lng": 112.6712,
+    "keyword": "FLORA",
+    "badge": "🦜 Sahabat Satwa Liar"
+  },
+  {
+    "post_id": 5,
+    "name": "Pos 5: Shelter Jagawana",
+    "title": "Tantangan Zero-Waste Kampus",
+    "description": "Pilah sampah botol ke tempat sampah cerdas otomatis di shelter peristirahatan.",
+    "route_guide": "Ambil jalur setapak melintasi pepohonan menuju Shelter Jagawana. Cari tempat pilah botol otomatis untuk tantangan Zero Waste.",
+    "short_hint": "Shelter Peristirahatan Jagawana",
+    "lat": -7.3022,
+    "lng": 112.6722,
+    "keyword": "BERSIH",
+    "badge": "♻️ Juara Daur Ulang"
+  },
+  {
+    "post_id": 6,
+    "name": "Pos 6: Gelora Kampus Hijau",
+    "title": "Tantangan Energi Langkah Kinetik",
+    "description": "Langkah energik di atas ubin konversi energi untuk menyalakan lampu taman.",
+    "route_guide": "Arahkan langkahmu ke kompleks Gelora Kampus Hijau di sisi utara kampus. Di sana ada ubin konversi energi kinetik ramah lingkungan.",
+    "short_hint": "Kompleks Gelora UNESA",
+    "lat": -7.2985,
+    "lng": 112.6728,
+    "keyword": "JUARA",
+    "badge": "⚡ Pahlawan Energi Bersih"
   }
 ]

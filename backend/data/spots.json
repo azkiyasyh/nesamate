@@ -1,10 +1,202 @@
 [
   {
-    "id": "spot_01",
-    "name": "Pintu Masuk Hutan UNESA",
-    "lat": -7.3006,
-    "lng": 112.6708,
-    "description": "Gerbang utama menuju kawasan konservasi rimbun dan jalur setapak Hutan UNESA.",
-    "type": "hutan"
+    "id": "LOC001",
+    "name": "Pusat Observasi Flora & Burung",
+    "area": "Hutan UNESA",
+    "category": "titik wisata",
+    "description": "Tempat teduh untuk melihat burung dan flora yang ada di hutan mini yang juga cocok buat nugas. Ada kursi taman dan gazebo yang dilengkapi colokan, cocok buat para mahasiswa bersantai dan bertugas, juga tersedia parkiran sepeda buat yang membawa sepeda.",
+    "facilities": ["Gazebo", "Bangku Taman", "Wifi", "Parkiran Sepeda"],
+    "lat": -7.301325,
+    "lng": 112.671791
+  },
+  {
+    "id": "LOC002",
+    "name": "Kandang Ayam",
+    "area": "Hutan UNESA",
+    "category": "titik wisata",
+    "description": "Tempat para ayam dikandangkan, banyak ayam di sini. Dilengkapi tempat sampah agar pengunjung tidak buang sampah sembarangan.",
+    "facilities": ["Kandang Ayam", "Tempat Sampah"],
+    "lat": -7.301034,
+    "lng": 112.671424
+  },
+  {
+    "id": "LOC003",
+    "name": "Gazeboo 1",
+    "area": "Hutan UNESA",
+    "category": "Fasilitas Umum",
+    "description": "Tempat untuk kita beristirahat sambil menikmati pemandangan hutan/taman, bisa leha-leha dan santai. Dilengkapi tempat sampah agar lingkungan terjaga.",
+    "facilities": ["Gazeboo", "Tempat Sampah"],
+    "lat": -7.300744,
+    "lng": 112.671448
+  },
+  {
+    "id": "LOC004",
+    "name": "Gazeboo 2",
+    "area": "Hutan UNESA",
+    "category": "Fasilitas Umum",
+    "description": "Tempat untuk kita beristirahat sambil menikmati pemandangan hutan/taman, bisa leha-leha dan santai. Dilengkapi tempat sampah agar lingkungan terjaga.",
+    "facilities": ["Gazeboo", "Tempat Sampah"],
+    "lat": -7.300440,
+    "lng": 112.671475
+  },
+  {
+    "id": "LOC005",
+    "name": "Danau Bunga Kertas",
+    "area": "Hutan UNESA",
+    "category": "titik wisata",
+    "description": "Danau asri dikelilingi bunga kertas yang indah dan gazebo tepi danau.",
+    "facilities": ["Danau", "Pagar Bunga", "Gazebo"],
+    "lat": -7.300294,
+    "lng": 112.671901
+  },
+  {
+    "id": "LOC006",
+    "name": "Taman Jalan Setapak",
+    "area": "Hutan UNESA",
+    "category": "titik wisata",
+    "description": "Jalur jalan setapak batu bertabur lampu hias taman dengan pagar tanaman alami.",
+    "facilities": ["Lampu Hias taman", "Pagar Tumbuhan", "Jalan batu tapak"],
+    "lat": -7.300170,
+    "lng": 112.671744
+  },
+  {
+    "id": "LOC007",
+    "name": "Penangkaran Hewan",
+    "area": "Hutan UNESA",
+    "category": "titik wisata",
+    "description": "Area penangkaran dan perawatan hewan seperti Rusa Totol dan Iguana.",
+    "facilities": ["Kandang Rusa Totol", "Kandang Iguana", "Gazebo"],
+    "lat": -7.300416,
+    "lng": 112.670883
+  },
+  {
+    "id": "LOC008",
+    "name": "Kandang Rusa",
+    "area": "Hutan UNESA",
+    "category": "titik wisata",
+    "description": "Kandang konservasi rusa kampus yang luas dan terpelihara.",
+    "facilities": ["Kandang Rusa"],
+    "lat": -7.300756,
+    "lng": 112.670951
+  },
+  {
+    "id": "LOC009",
+    "name": "Danau Kecil Unesa",
+    "area": "Hutan UNESA",
+    "category": "titik wisata",
+    "description": "Danau kecil alami penyejuk ekosistem Hutan UNESA.",
+    "facilities": ["Danau Kecil UNESA"],
+    "lat": -7.300733,
+    "lng": 112.670126
+  },
+  {
+    "id": "LOC010",
+    "name": "Zona Merak",
+    "area": "Hutan UNESA",
+    "category": "titik wisata",
+    "description": "Kandang konservasi satwa unggas merak yang indah.",
+    "facilities": ["Kandang Merak"],
+    "lat": -7.300464,
+    "lng": 112.670441
+  },
+  {
+    "id": "LOC011",
+    "name": "Tugu Taman",
+    "area": "Hutan UNESA",
+    "category": "titik wisata",
+    "description": "Tugu landmark taman di tengah area jalur hijau.",
+    "facilities": ["Tugu Taman"],
+    "lat": -7.300793,
+    "lng": 112.671071
+  },
+  {
+    "id": "LOC012",
+    "name": "Zona Angsa & Bebek",
+    "area": "Hutan UNESA",
+    "category": "titik wisata",
+    "description": "Area perairan dan kandang satwa unggas air angsa dan bebek.",
+    "facilities": ["Kandang Angsa", "Kandang Bebek"],
+    "lat": -7.300517,
+    "lng": 112.670652
+  },
+  {
+    "id": "LOC013",
+    "name": "Zona Bugar",
+    "area": "Hutan UNESA",
+    "category": "Fasilitas Umum",
+    "description": "Area olahraga terbuka di bawah pepohonan rindang kampus.",
+    "facilities": ["Zona bugar"],
+    "lat": -7.300548,
+    "lng": 112.670248
+  },
+  {
+    "id": "LOC014",
+    "name": "Zona Merpati",
+    "area": "Hutan UNESA",
+    "category": "titik wisata",
+    "description": "Kandang dan area pakan kawanan merpati jinak.",
+    "facilities": ["Zona Merpati"],
+    "lat": -7.300471,
+    "lng": 112.670307
+  },
+  {
+    "id": "LOC015",
+    "name": "TPST",
+    "area": "Hutan UNESA",
+    "category": "Fasilitas non Umum",
+    "description": "Tempat Pembuangan Sampah Terpadu untuk pengelolaan limbah ramah lingkungan.",
+    "facilities": ["Tempat Pembuangan Sampah Terpadu"],
+    "lat": -7.302821,
+    "lng": 112.668399
+  },
+  {
+    "id": "LOC016",
+    "name": "Toilet Shelter Hutan & Danau",
+    "area": "Hutan UNESA",
+    "category": "Fasilitas Umum",
+    "description": "Fasilitas toilet umum di dekat shelter hutan dan danau.",
+    "facilities": ["Toilet"],
+    "lat": -7.3018,
+    "lng": 112.6726
+  },
+  {
+    "id": "LOC017",
+    "name": "Toilet Gedung Rektorat",
+    "area": "Rektorat UNESA",
+    "category": "Fasilitas Umum",
+    "description": "Fasilitas toilet gedung rektorat UNESA.",
+    "facilities": ["Toilet"],
+    "lat": -7.3005,
+    "lng": 112.6726
+  },
+  {
+    "id": "LOC018",
+    "name": "Toilet Koridor Arboretum",
+    "area": "Jalur Hijau Arboretum",
+    "category": "Fasilitas Umum",
+    "description": "Fasilitas toilet koridor jalur hijau arboretum.",
+    "facilities": ["Toilet"],
+    "lat": -7.3028,
+    "lng": 112.6738
+  },
+  {
+    "id": "LOC019",
+    "name": "Toilet Gelora UNESA Barat",
+    "area": "Gelora UNESA Barat",
+    "category": "Fasilitas Umum",
+    "description": "Fasilitas toilet di area kompleks Gelora UNESA Barat.",
+    "facilities": ["Toilet"],
+    "lat": -7.2988,
+    "lng": 112.6720
+  },
+  {
+    "id": "LOC020",
+    "name": "Projek Tim JJ",
+    "area": "Hutan UNESA",
+    "category": "Projek Kelompok",
+    "description": "Lokasi stan/pameran projek tim JJ di kawasan hutan.",
+    "facilities": ["Stan Pameran"],
+    "lat": -7.300587,
+    "lng": 112.670175
   }
 ]

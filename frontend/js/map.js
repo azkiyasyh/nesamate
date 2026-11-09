@@ -6,9 +6,13 @@
 class NesaMapManager {
   constructor() {
     this.map = null;
+    this.currentContainerId = null;
     this.userMarker = null;
     this.userCoordinates = NESA_DATA.campusCenter;
     this.watchId = null;
+    this.spotMarkers = {};
+    this.pendingRoute = null;
+    this.pendingHighlight = null;
 
     // Layer groups untuk POI filter
     this.layers = {
@@ -41,12 +45,29 @@ class NesaMapManager {
     const container = document.getElementById(containerId);
     if (!container) return;
 
+    // Jika peta sudah ada di container ini, jangan destroy, cukup resize
+    if (this.map && this.currentContainerId === containerId) {
+      this.map.invalidateSize();
+      if (this.pendingRoute) {
+        const pr = this.pendingRoute;
+        this.pendingRoute = null;
+        this.drawRouteTo(pr.targetLat, pr.targetLng, pr.destinationName);
+      }
+      if (this.pendingHighlight) {
+        const ph = this.pendingHighlight;
+        this.pendingHighlight = null;
+        this.highlightSpot(ph);
+      }
+      return;
+    }
+
     if (this.map) {
       try {
         this.map.remove();
       } catch (err) {}
       this.map = null;
     }
+    this.currentContainerId = containerId;
 
     // Set view peta otomatis berada tepat di tengah koordinat Hutan UNESA (-7.3005, 112.6740)
     this.map = L.map(containerId, {
@@ -56,9 +77,9 @@ class NesaMapManager {
       attributionControl: false
     });
 
-    // 1. Esri World Street Map: stabil, tanpa watermark API key, dan bebas blokir HTTP 403 di Chrome
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles &copy; Esri',
+    // 1. OpenStreetMap Standard Tile Layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19
     }).addTo(this.map);
 
@@ -78,9 +99,21 @@ class NesaMapManager {
     this.initUserMarker();
 
     // Invalidate size bertahap agar tiles Leaflet tidak abu-abu saat transisi layar
-    [100, 300, 600].forEach(delay => {
+    [100, 250, 500].forEach(delay => {
       setTimeout(() => {
-        if (this.map) this.map.invalidateSize();
+        if (this.map) {
+          this.map.invalidateSize();
+          if (this.pendingRoute) {
+            const pr = this.pendingRoute;
+            this.pendingRoute = null;
+            this.drawRouteTo(pr.targetLat, pr.targetLng, pr.destinationName);
+          }
+          if (this.pendingHighlight) {
+            const ph = this.pendingHighlight;
+            this.pendingHighlight = null;
+            this.highlightSpot(ph);
+          }
+        }
       }, delay);
     });
   }
@@ -96,6 +129,8 @@ class NesaMapManager {
       bgColor = '#C8B48A'; // Muted Gold
     } else if (type === 'gerbang') {
       bgColor = '#8B5E3C'; // Warm Brown
+    } else if (type === 'fauna') {
+      bgColor = '#A0522D'; // Sienna Safari Animal
     }
 
     const html = `
@@ -212,6 +247,49 @@ class NesaMapManager {
       `);
       this.layers.gerbang.addLayer(marker);
     });
+
+    // 6. 20 Spot Resmi Hutan & Kampus (Kandang Hewan, Danau, Gazebo, Fasilitas)
+    this.spotMarkers = {};
+    if (NESA_DATA.spots && Array.isArray(NESA_DATA.spots)) {
+      NESA_DATA.spots.forEach(item => {
+        const icon = this.createPinIcon(item.category, item.icon);
+        const marker = L.marker([item.lat, item.lng], { icon });
+        marker.bindPopup(`
+          <div class="map-popup-card">
+            <span class="popup-tag-forest">${item.tag || '🌿 Spot Hutan UNESA'}</span>
+            <h4 class="popup-title">${item.name}</h4>
+            <p class="popup-desc">${item.desc}</p>
+            <button class="popup-nav-btn" onclick="window.nesaApp.routeToPoint(${item.lat}, ${item.lng}, '${item.name}')">
+              🧭 Petunjuk Arah
+            </button>
+          </div>
+        `);
+        this.layers.hutan.addLayer(marker);
+        this.spotMarkers[item.id.toUpperCase()] = marker;
+      });
+    }
+  }
+
+  /**
+   * Sorot titik spot tertentu di peta dan buka popup-nya
+   */
+  highlightSpot(spotId) {
+    if (!spotId) return;
+    const cleanId = String(spotId).toUpperCase();
+    if (!this.map) {
+      this.pendingHighlight = cleanId;
+      return;
+    }
+    const spot = (NESA_DATA.spots || []).find(s => s.id === cleanId);
+    if (spot && this.map) {
+      this.map.flyTo([spot.lat, spot.lng], 18, { duration: 1.0 });
+      const marker = this.spotMarkers[cleanId];
+      if (marker) {
+        setTimeout(() => {
+          marker.openPopup();
+        }, 800);
+      }
+    }
   }
 
   /**
@@ -287,25 +365,29 @@ class NesaMapManager {
    * Gambar garis rute navigasi (Leaflet Routing Machine dengan fallback polyline lembut)
    */
   drawRouteTo(targetLat, targetLng, destinationName = 'Destinasi') {
+    if (!this.map) {
+      this.pendingRoute = { targetLat, targetLng, destinationName };
+      return;
+    }
+
     this.clearRoute();
 
     const start = L.latLng(this.userCoordinates[0], this.userCoordinates[1]);
     const end = L.latLng(targetLat, targetLng);
 
-    const drawPolylineFallback = () => {
-      if (this.activePolyline) return;
-      const midLat = (start.lat + end.lat) / 2 + 0.0002;
-      const midLng = (start.lng + end.lng) / 2 - 0.0002;
+    // Titik lekukan halus rute safari
+    const midLat = (start.lat + end.lat) / 2 + 0.00015;
+    const midLng = (start.lng + end.lng) / 2 - 0.00015;
 
-      this.activePolyline = L.polyline([start, [midLat, midLng], end], {
-        color: '#1E3B2F',
-        weight: 5,
-        opacity: 0.9,
-        dashArray: '8, 6'
-      }).addTo(this.map);
+    // Garis panduan rute safari seketika (Anti-Lag, bebas kegagalan server pihak ketiga)
+    this.activePolyline = L.polyline([start, [midLat, midLng], end], {
+      color: '#1E3B2F',
+      weight: 6,
+      opacity: 0.9,
+      dashArray: '10, 8'
+    }).addTo(this.map);
 
-      this.map.fitBounds([start, end], { padding: [70, 70], maxZoom: 17 });
-    };
+    this.map.fitBounds([start, end], { padding: [80, 80], maxZoom: 17.5 });
 
     if (typeof L.Routing !== 'undefined' && L.Routing.control) {
       try {
@@ -315,29 +397,21 @@ class NesaMapManager {
           showAlternatives: false,
           addWaypoints: false,
           draggableWaypoints: false,
-          fitSelectedRoutes: true,
+          fitSelectedRoutes: false,
           lineOptions: {
             styles: [
-              { color: '#1E3B2F', opacity: 0.85, weight: 6 },
-              { color: '#C8B48A', opacity: 0.9, weight: 3, dashArray: '8, 8' }
+              { color: '#1E3B2F', opacity: 0.9, weight: 6 },
+              { color: '#C8B48A', opacity: 0.95, weight: 3, dashArray: '8, 8' }
             ]
           },
           createMarker: () => null
         }).addTo(this.map);
 
-        this.routingControl.on('routingerror', () => {
-          this.clearRoute();
-          drawPolylineFallback();
-        });
-
         const container = this.routingControl.getContainer();
         if (container) container.style.display = 'none';
-        return;
       } catch (e) {
-        drawPolylineFallback();
+        // Fallback polyline sudah aktif
       }
-    } else {
-      drawPolylineFallback();
     }
   }
 

@@ -33,6 +33,7 @@ const CHALLENGE_ROUTE_GUIDES = {
 class NesaApp {
   constructor() {
     this.userName = localStorage.getItem('nesamate_user_name') || '';
+    this.sessionId = localStorage.getItem('nesamate_session_id') || '';
     this.currentScreen = 'screen-landing';
     this.activeMapMode = null; // 'free' | 'challenge' | 'jogging'
 
@@ -192,6 +193,22 @@ class NesaApp {
 
       this.userName = val;
       localStorage.setItem('nesamate_user_name', val);
+
+      // Registrasi sesi ke backend
+      try {
+        const sRes = await fetch('/api/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_name: val })
+        });
+        if (sRes.ok) {
+          const sData = await sRes.json();
+          this.sessionId = sData.session_id;
+          localStorage.setItem('nesamate_session_id', sData.session_id);
+        }
+      } catch (err) {
+        console.warn('[NesaMate API] Session API offline, menggunakan sesi lokal:', err);
+      }
 
       // A. PERMINTAAN IZIN MIC SEJAK START (ONBOARDING)
       await nesaVoice.requestMicrophonePermission();
@@ -516,7 +533,7 @@ class NesaApp {
   /**
    * Validasi kata kunci pos dari input pengguna
    */
-  submitPasscode(posId) {
+  async submitPasscode(posId) {
     const pos = this.challengeState.positions.find(p => p.id === posId);
     if (!pos) return;
 
@@ -524,9 +541,40 @@ class NesaApp {
     if (!input) return;
 
     const entered = input.value.trim().toUpperCase();
-    const correct = pos.passcode.toUpperCase();
+    if (!entered) {
+      input.focus();
+      return;
+    }
 
-    if (entered === correct) {
+    let isSuccess = false;
+    let customMessage = '';
+
+    // Validasi via Backend API jika online
+    try {
+      const vRes = await fetch('/api/challenge/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: this.sessionId || 'local-session',
+          post_id: pos.index,
+          code: entered
+        })
+      });
+
+      if (vRes.ok) {
+        const vData = await vRes.json();
+        isSuccess = vData.success;
+        customMessage = vData.message;
+      } else {
+        // Fallback local check jika server offline
+        isSuccess = (entered === pos.passcode.toUpperCase());
+      }
+    } catch (err) {
+      // Offline fallback
+      isSuccess = (entered === pos.passcode.toUpperCase());
+    }
+
+    if (isSuccess) {
       pos.completed = true;
       this.showToast(`🎉 Hebat! Misi ${pos.name} Tercapai!`);
 
@@ -535,7 +583,7 @@ class NesaApp {
       if (nextPos) {
         this.challengeState.activePosIndex = nextPos.index;
         const nextGuide = CHALLENGE_ROUTE_GUIDES[nextPos.index] || { guide: nextPos.desc };
-        const msg = `Luar biasa! Misi ${pos.name} selesai. Target selanjutnya adalah ${nextPos.name}. ${nextGuide.guide} Ikuti rutenya di peta!`;
+        const msg = customMessage || `Luar biasa! Misi ${pos.name} selesai. Target selanjutnya adalah ${nextPos.name}. ${nextGuide.guide} Ikuti rutenya di peta!`;
         nesaVoice.speak(msg);
         this.renderChallengeCards();
         this.updateChallengeRouteGuideCard(nextPos, nextGuide);
@@ -546,7 +594,7 @@ class NesaApp {
         this.renderChallengeCards();
       }
     } else {
-      alert(`Kata kunci salah! Pastikan bertanya ke penjaga pos.`);
+      alert(customMessage || `Kata kunci salah! Pastikan bertanya ke penjaga pos.`);
       input.focus();
     }
   }
@@ -771,10 +819,20 @@ class NesaApp {
   /**
    * Navigasi langsung ke titik POI di peta
    */
-  routeToPoint(lat, lng, name) {
-    nesaMap.drawRouteTo(lat, lng, name);
-    const msg = `Menampilkan rute menuju ${name}. Ikuti garis panduan di peta.`;
-    nesaVoice.speak(msg);
+  routeToPoint(lat, lng, name, shouldSpeak = true) {
+    if (this.currentScreen !== 'screen-free-mode') {
+      this.showScreen('screen-free-mode');
+    }
+    if (window.nesaMap) {
+      if (!window.nesaMap.map) {
+        window.nesaMap.initMap('free-map-container');
+      }
+      window.nesaMap.drawRouteTo(lat, lng, name);
+    }
+    if (shouldSpeak) {
+      const msg = `Menampilkan rute menuju ${name}. Ikuti garis panduan di peta.`;
+      nesaVoice.speak(msg);
+    }
     this.showToast(`🧭 Rute ke ${name} aktif`);
   }
 
@@ -871,40 +929,168 @@ class NesaApp {
       }
     }
 
+    // Deteksi Spesifik Lokasi Satwa & Kandang Hewan (Langsung buat rute di peta)
+    const animalSpotMap = [
+      { keys: ['rusa totol', 'iguana', 'penangkaran'], id: 'LOC007' },
+      { keys: ['rusa'], id: 'LOC008' },
+      { keys: ['ayam', 'kandang ayam'], id: 'LOC002' },
+      { keys: ['merak', 'kandang merak'], id: 'LOC010' },
+      { keys: ['angsa', 'bebek'], id: 'LOC012' },
+      { keys: ['merpati', 'burung dara'], id: 'LOC014' },
+      { keys: ['observasi burung', 'flora'], id: 'LOC001' },
+      { keys: ['danau bunga', 'danau bunga kertas'], id: 'LOC005' },
+      { keys: ['danau kecil'], id: 'LOC009' }
+    ];
+
+    let targetAnimalSpot = null;
+    for (const item of animalSpotMap) {
+      if (item.keys.some(k => text.includes(k))) {
+        targetAnimalSpot = (NESA_DATA.spots || []).find(s => s.id === item.id);
+        if (targetAnimalSpot) break;
+      }
+    }
+
+    if (targetAnimalSpot) {
+      if (this.currentScreen !== 'screen-free-mode') this.showScreen('screen-free-mode');
+      this.routeToPoint(targetAnimalSpot.lat, targetAnimalSpot.lng, targetAnimalSpot.name, false);
+      this.highlightSpotById(targetAnimalSpot.id, true);
+      reply = `Rute menuju ${targetAnimalSpot.name} telah ditampilkan di peta. Silakan ikuti garis panduannya.`;
+      if (bubble) bubble.textContent = `Nesa: "${reply}"`;
+      nesaVoice.speak(reply);
+      return;
+    }
+
     // Pencarian Fasilitas Kampus & Hutan UNESA
     if (text.includes('musholla') || text.includes('masjid') || text.includes('sholat')) {
       if (this.currentScreen !== 'screen-free-mode') this.showScreen('screen-free-mode');
       const item = NESA_DATA.poi.musholla[0];
-      this.routeToPoint(item.lat, item.lng, item.name);
+      this.routeToPoint(item.lat, item.lng, item.name, false);
       reply = `Aku telah menunjukkan rute ke ${item.name} di peta.`;
     } else if (text.includes('toilet') || text.includes('kamar mandi') || text.includes('wc')) {
       if (this.currentScreen !== 'screen-free-mode') this.showScreen('screen-free-mode');
       const item = NESA_DATA.poi.toilet[0];
-      this.routeToPoint(item.lat, item.lng, item.name);
+      this.routeToPoint(item.lat, item.lng, item.name, false);
       reply = `Toilet terdekat ada di ${item.name}. Rutenya sudah tampil di peta!`;
     } else if (text.includes('parkir') || text.includes('motor') || text.includes('mobil')) {
       if (this.currentScreen !== 'screen-free-mode') this.showScreen('screen-free-mode');
       const item = NESA_DATA.poi.parkiran[0];
-      this.routeToPoint(item.lat, item.lng, item.name);
+      this.routeToPoint(item.lat, item.lng, item.name, false);
       reply = `Lokasi ${item.name} telah dipetakan untukmu.`;
     } else if (text.includes('hutan') || text.includes('trekking') || text.includes('pohon')) {
       if (this.currentScreen !== 'screen-free-mode') this.showScreen('screen-free-mode');
       const item = NESA_DATA.poi.hutan[0];
-      this.routeToPoint(item.lat, item.lng, item.name);
+      this.routeToPoint(item.lat, item.lng, item.name, false);
       reply = `Menuju ke ${item.name}. Nikmati kesegaran udara kanopi Hutan UNESA!`;
     } else if (text.includes('gerbang') || text.includes('pintu masuk') || text.includes('gate')) {
       if (this.currentScreen !== 'screen-free-mode') this.showScreen('screen-free-mode');
       const item = NESA_DATA.poi.gerbang[0];
-      this.routeToPoint(item.lat, item.lng, item.name);
+      this.routeToPoint(item.lat, item.lng, item.name, false);
       reply = `Menampilkan rute ke ${item.name}. Selamat datang di kampus UNESA!`;
     } else {
-      reply = `Aku mendengar "${transcript}". Kamu bisa memilih Mode Eksplorasi, Berpetualang, Jogging, atau mencari fasilitas kampus.`;
+      // Pertanyaan edukasi/flora/fauna/arah dialirkan ke Gemini AI via backend
+      this.askNesaAI(transcript);
+      return;
     }
 
     if (bubble) {
       bubble.textContent = `Nesa: "${reply}"`;
     }
     nesaVoice.speak(reply);
+  }
+
+  /**
+   * Tanya jawab cerdas ke Gemini AI backend (RAG + Lokasi)
+   */
+  async askNesaAI(query) {
+    const bubble = document.getElementById('drawer-chat-bubble');
+    if (bubble) {
+      bubble.textContent = 'Nesa: "Sedang berpikir... ✨"';
+    }
+
+    try {
+      const mode = (this.currentScreen === 'screen-free-mode') ? 'free'
+                 : (this.currentScreen === 'screen-challenge-mode' ? 'challenge' : 'none');
+
+      const userCoords = nesaMap?.userCoordinates;
+      const location = (userCoords && Array.isArray(userCoords)) ? { lat: userCoords[0], lng: userCoords[1] } : null;
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: this.sessionId || 'guest',
+          message: query,
+          mode: mode,
+          location: location
+        })
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      // Debug Benchmark Latency Display
+      if (data.benchmarks) {
+        const b = data.benchmarks;
+        const totalSec = (b.total_ms / 1000).toFixed(2);
+        const llmSec = (b.llm_ms / 1000).toFixed(2);
+        const ttsSec = (b.tts_ms / 1000).toFixed(2);
+        console.log(`[AI Latency] Total: ${totalSec}s | LLM: ${llmSec}s | TTS: ${ttsSec}s | RAG: ${b.rag_ms}ms`);
+
+        const badge = document.getElementById('ai-latency-badge');
+        const badgeText = document.getElementById('ai-latency-text');
+        if (badge && badgeText) {
+          badge.style.display = 'block';
+          badgeText.textContent = `Total: ${totalSec}s (LLM: ${llmSec}s, TTS: ${ttsSec}s)`;
+        }
+      }
+
+      const reply = data.speech || 'Halo, ada yang ingin kamu tanyakan tentang Hutan UNESA?';
+      if (bubble) {
+        bubble.textContent = `Nesa: "${reply}"`;
+      }
+      nesaVoice.speak(reply);
+
+      // Jalankan aksi responsif dari AI
+      if (data.action === 'show_map') {
+        if (this.currentScreen !== 'screen-free-mode') this.showScreen('screen-free-mode');
+      } else if (data.action === 'start_challenge') {
+        if (this.currentScreen !== 'screen-challenge-mode') this.showScreen('screen-challenge-mode');
+      } else if (data.action === 'show_spot_detail' && data.action_payload && data.action_payload.spot_id) {
+        if (this.currentScreen !== 'screen-free-mode') this.showScreen('screen-free-mode');
+        this.highlightSpotById(data.action_payload.spot_id);
+      }
+    } catch (err) {
+      console.warn('[NesaMate AI] Error pemanggilan API chat:', err);
+      const fallbackReply = `Aku mendengar "${query}". Mau menjelajahi peta hutan atau ikut tantangan seru?`;
+      if (bubble) {
+        bubble.textContent = `Nesa: "${fallbackReply}"`;
+      }
+      nesaVoice.speak(fallbackReply);
+    }
+  }
+
+  /**
+   * Sorot titik spot di peta Leaflet berdasarkan spot_id dari AI & gambar rute
+   */
+  highlightSpotById(spotId, drawRoute = true) {
+    if (!spotId) return;
+    const cleanId = String(spotId).toUpperCase();
+
+    // Beralih ke layar peta Free Mode jika sedang di layar lain
+    if (this.currentScreen !== 'screen-free-mode') {
+      this.showScreen('screen-free-mode');
+    }
+
+    const spot = (NESA_DATA.spots || []).find(s => s.id === cleanId);
+    if (spot && drawRoute) {
+      this.routeToPoint(spot.lat, spot.lng, spot.name, false);
+    }
+
+    setTimeout(() => {
+      if (window.nesaMap) {
+        window.nesaMap.highlightSpot(cleanId);
+      }
+    }, 400);
   }
 
   /**

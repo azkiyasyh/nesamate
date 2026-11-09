@@ -322,5 +322,29 @@ const NESA_DATA = {
         prompt: 'Luar biasa! 150 meter terakhir menuju garis finish satu putaran. Anda telah membakar 175 kalori penuh!'
       }
     ]
-  }
+  },
+
+  // 20 Spot Resmi Hutan & Kampus UNESA (termasuk Kandang Satwa Konservasi)
+  spots: [
+    { id: 'LOC001', name: 'Pusat Observasi Flora & Burung', icon: '🦜', category: 'wisata', tag: '🦜 Observasi Hayati', lat: -7.301325, lng: 112.671791, desc: 'Tempat teduh melihat burung dan flora hutan mini dilengkapi gazebo dan colokan nugas.' },
+    { id: 'LOC002', name: 'Kandang Ayam', icon: '🐔', category: 'fauna', tag: '🐔 Kandang Ayam Hutan', lat: -7.301034, lng: 112.671424, desc: 'Area pemeliharaan ayam hutan kampus yang bersih dengan tempat sampah ramah lingkungan.' },
+    { id: 'LOC003', name: 'Gazeboo 1', icon: '🛖', category: 'fasilitas', tag: '🛖 Gazebo Istirahat', lat: -7.300744, lng: 112.671448, desc: 'Gazebo peristirahatan untuk menikmati udara segar dan rindangnya pepohonan.' },
+    { id: 'LOC004', name: 'Gazeboo 2', icon: '🛖', category: 'fasilitas', tag: '🛖 Gazebo Istirahat', lat: -7.300440, lng: 112.671475, desc: 'Gazebo santai tepi jalur hijau dengan pemandangan kanopi pohon tropis.' },
+    { id: 'LOC005', name: 'Danau Bunga Kertas', icon: '🌺', category: 'wisata', tag: '🌺 Panorama Danau', lat: -7.300294, lng: 112.671901, desc: 'Danau asri dikelilingi pagar bunga kertas yang indah dan gazebo tepi danau.' },
+    { id: 'LOC006', name: 'Taman Jalan Setapak', icon: '🥾', category: 'wisata', tag: '🥾 Jalur Trekking', lat: -7.300170, lng: 112.671744, desc: 'Jalur batu setapak dengan lampu hias taman dan pagar tanaman alami.' },
+    { id: 'LOC007', name: 'Penangkaran Hewan (Rusa Totol & Iguana)', icon: '🦌', category: 'fauna', tag: '🦌 Penangkaran Satwa', lat: -7.300416, lng: 112.670883, desc: 'Area penangkaran satwa Rusa Totol berbintik putih dan kandang iguana konservasi.' },
+    { id: 'LOC008', name: 'Kandang Rusa', icon: '🦌', category: 'fauna', tag: '🦌 Kandang Rusa Utama', lat: -7.300756, lng: 112.670951, desc: 'Kandang utama konservasi rusa kampus yang luas dan terpelihara hijau.' },
+    { id: 'LOC009', name: 'Danau Kecil Unesa', icon: '⛵', category: 'wisata', tag: '⛵ Danau Alami', lat: -7.300733, lng: 112.670126, desc: 'Danau alami penyejuk ekosistem Hutan UNESA dengan semilir angin sejuk.' },
+    { id: 'LOC010', name: 'Zona Merak', icon: '🦚', category: 'fauna', tag: '🦚 Konservasi Burung Merak', lat: -7.300464, lng: 112.670441, desc: 'Kandang konservasi satwa burung merak dengan bulu ekor indah menawan.' },
+    { id: 'LOC011', name: 'Tugu Taman', icon: '🗿', category: 'wisata', tag: '🗿 Landmark Taman', lat: -7.300793, lng: 112.671071, desc: 'Tugu monumen taman di tengah area konservasi jalur hijau kampus.' },
+    { id: 'LOC012', name: 'Zona Angsa & Bebek', icon: '🦢', category: 'fauna', tag: '🦢 Satwa Unggas Air', lat: -7.300517, lng: 112.670652, desc: 'Kolam dan kandang konservasi kawanan angsa berleher panjang dan bebek.' },
+    { id: 'LOC013', name: 'Zona Bugar', icon: '🏃', category: 'fasilitas', tag: '🏃 Area Olahraga', lat: -7.300548, lng: 112.670248, desc: 'Area olahraga terbuka di bawah pepohonan rindang untuk senam dan peregangan.' },
+    { id: 'LOC014', name: 'Zona Merpati', icon: '🕊️', category: 'fauna', tag: '🕊️ Kawanan Merpati', lat: -7.300471, lng: 112.670307, desc: 'Area pakan dan kandang burung merpati jinak di kawasan jalur rimbun.' },
+    { id: 'LOC015', name: 'TPST Hutan', icon: '♻️', category: 'fasilitas', tag: '♻️ Pengolahan Sampah', lat: -7.302821, lng: 112.668399, desc: 'Tempat Pembuangan Sampah Terpadu untuk pengolahan limbah ramah lingkungan.' },
+    { id: 'LOC016', name: 'Toilet Shelter Hutan & Danau', icon: '🚻', category: 'toilet', tag: '🚻 Fasilitas Sanitasi', lat: -7.3018, lng: 112.6726, desc: 'Fasilitas toilet umum dekat shelter hutan dan danau.' },
+    { id: 'LOC017', name: 'Toilet Gedung Rektorat', icon: '🚻', category: 'toilet', tag: '🚻 Fasilitas Sanitasi', lat: -7.3005, lng: 112.6726, desc: 'Fasilitas toilet di sayap timur Gedung Rektorat UNESA.' },
+    { id: 'LOC018', name: 'Toilet Koridor Arboretum', icon: '🚻', category: 'toilet', tag: '🚻 Fasilitas Sanitasi', lat: -7.3028, lng: 112.6738, desc: 'Toilet koridor jalur hijau arboretum hutan kampus.' },
+    { id: 'LOC019', name: 'Toilet Gelora UNESA Barat', icon: '🚻', category: 'toilet', tag: '🚻 Fasilitas Sanitasi', lat: -7.2988, lng: 112.6720, desc: 'Toilet di area kompleks Gelora olahraga kampus.' },
+    { id: 'LOC020', name: 'Stan Projek Tim JJ', icon: '🔬', category: 'wisata', tag: '🔬 Pameran Projek', lat: -7.300587, lng: 112.670175, desc: 'Stan pameran karya inovasi ramah lingkungan projek tim JJ.' }
+  ]
 };

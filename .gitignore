@@ -25,3 +25,5 @@ chroma_db/
 *.log
 .DS_Store
 Thumbs.db
+.vscode/
+frontend/assets/audio/generated/

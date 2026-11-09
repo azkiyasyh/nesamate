@@ -1,0 +1,66 @@
+[
+  {
+    "id": "HWN001",
+    "name": "Ayam",
+    "category": "Aves",
+    "location_id": "LOC002",
+    "description": "Unggas peliharaan yang berada di area kandang ayam hutan kampus.",
+    "fun_fact": "Ayam di sini dipelihara di kandang khusus berdekatan dengan fasilitas kebersihan."
+  },
+  {
+    "id": "HWN002",
+    "name": "Rusa Totol",
+    "category": "Mamalia",
+    "location_id": "LOC007",
+    "description": "Rusa berbintik putih yang ramah dan dilindungi di area penangkaran hewan Hutan UNESA.",
+    "fun_fact": "Rusa totol menjadi salah satu ikon satwa kampus yang paling disukai pengunjung."
+  },
+  {
+    "id": "HWN003",
+    "name": "Iguana",
+    "category": "Reptil",
+    "location_id": "LOC007",
+    "description": "Reptil herbivora berdarah dingin yang dirawat di kandang penangkaran Hutan UNESA.",
+    "fun_fact": "Sering berjemur di bawah sinar matahari pagi untuk menghangatkan tubuh."
+  },
+  {
+    "id": "HWN004",
+    "name": "Rusa",
+    "category": "Mamalia",
+    "location_id": "LOC008",
+    "description": "Satwa mamalia rusa yang berada di kandang rusa utama kawasan konservasi kampus.",
+    "fun_fact": "Menyukai dedaunan segar dan rumput hijau di sekeliling hutan."
+  },
+  {
+    "id": "HWN005",
+    "name": "Merak",
+    "category": "Aves",
+    "location_id": "LOC010",
+    "description": "Burung indah dengan bulu ekor memukau yang berada di Zona Merak Hutan UNESA.",
+    "fun_fact": "Merak jantan kerap mengembangkan bulu ekornya yang bermotif mata saat menarik perhatian."
+  },
+  {
+    "id": "HWN006",
+    "name": "Angsa",
+    "category": "Aves",
+    "location_id": "LOC012",
+    "description": "Unggas air berleher panjang yang anggun di zona perairan Hutan UNESA.",
+    "fun_fact": "Sangat teritorial dan pandai berenang di kolam/danau."
+  },
+  {
+    "id": "HWN007",
+    "name": "Bebek",
+    "category": "Aves",
+    "location_id": "LOC012",
+    "description": "Unggas air yang hidup berdampingan dengan angsa di zona kolam.",
+    "fun_fact": "Bulu bebek memiliki lapisan minyak alami sehingga tidak basah kuyup saat berenang."
+  },
+  {
+    "id": "HWN008",
+    "name": "Merpati",
+    "category": "Aves",
+    "location_id": "LOC014",
+    "description": "Burung jinak pemakan biji-bijian yang berkumpul di Zona Merpati.",
+    "fun_fact": "Dikenal memiliki navigasi alami yang tajam dan sering hinggap dekat pengunjung."
+  }
+]

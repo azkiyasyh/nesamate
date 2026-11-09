@@ -43,6 +43,7 @@ class ChatResponse(BaseModel):
     ] = "none"
     action_payload: Optional[Dict[str, Any]] = None
     audio_url: Optional[str] = None
+    benchmarks: Optional[Dict[str, float]] = None
 
 
 class AdminCodeGenerateRequest(BaseModel):
@@ -71,3 +72,13 @@ class ValidateCodeResponse(BaseModel):
     progress: int
     total_posts: int = 6
     completed: bool = False
+
+
+class TTSRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=500)
+
+
+class TTSResponse(BaseModel):
+    audio_url: Optional[str] = None
+    cached: bool = False
+    benchmarks: Optional[Dict[str, float]] = None
