@@ -5,6 +5,9 @@ venv/
 env/
 ENV/
 
+# Documentation (local only)
+docs/
+
 # Python cache
 __pycache__/
 *.py[cod]
