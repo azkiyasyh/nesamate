@@ -1,0 +1,10 @@
+[
+  {
+    "id": "ff_01",
+    "name": "Pohon Trembesi",
+    "sci_name": "Samanea saman",
+    "category": "flora",
+    "description": "Pohon peneduh besar penyerap karbon di kawasan konservasi hutan kampus.",
+    "spot_ids": ["spot_01"]
+  }
+]

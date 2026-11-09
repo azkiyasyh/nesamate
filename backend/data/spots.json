@@ -1,0 +1,10 @@
+[
+  {
+    "id": "spot_01",
+    "name": "Pintu Masuk Hutan UNESA",
+    "lat": -7.3006,
+    "lng": 112.6708,
+    "description": "Gerbang utama menuju kawasan konservasi rimbun dan jalur setapak Hutan UNESA.",
+    "type": "hutan"
+  }
+]
