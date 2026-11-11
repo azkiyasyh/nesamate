@@ -366,6 +366,130 @@ body {
   pointer-events: none;
 }
 
+/* Floating Navigation Active Route Card di Layar 3 */
+.free-nav-active-card {
+  position: absolute;
+  top: 110px;
+  left: 12px;
+  right: 12px;
+  z-index: 35;
+  background: rgba(30, 59, 47, 0.96);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: var(--color-cream);
+  border: 1.5px solid var(--color-gold);
+  border-radius: var(--radius-card);
+  padding: 10px 14px;
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  animation: slideNavCardDown 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.free-nav-active-card.is-active {
+  display: flex;
+}
+
+@keyframes slideNavCardDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.nav-active-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.nav-active-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.nav-active-badge {
+  background: var(--color-gold);
+  color: var(--color-primary);
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.nav-dist-text {
+  font-size: 11px;
+  color: #D3DAC8;
+  font-weight: 600;
+}
+
+.nav-dest-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #FFFFFF;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.btn-cancel-nav {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  flex-shrink: 0;
+}
+
+.btn-cancel-nav:hover {
+  background: rgba(231, 76, 60, 0.85);
+  border-color: #E74C3C;
+  transform: scale(1.08);
+}
+
+/* Custom Destination Flag Marker di Peta */
+.dest-flag-div-icon {
+  background: none;
+  border: none;
+}
+
+.dest-flag-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--color-primary);
+  color: #FFFFFF;
+  border: 2px solid var(--color-gold);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  transform: translateY(-50%);
+  animation: floatFlag 2s infinite ease-in-out;
+}
+
+@keyframes floatFlag {
+  0% { transform: translateY(-50%); }
+  50% { transform: translateY(-58%); }
+  100% { transform: translateY(-50%); }
+}
+
+.dest-flag-emoji {
+  font-size: 13px;
+}
+
 .free-nav-header-card {
   background: rgba(245, 240, 230, 0.95);
   backdrop-filter: blur(14px);
@@ -542,6 +666,22 @@ body {
 .live-audio-pill.is-speaking .audio-live-dot {
   background: var(--color-gold);
   animation: audioPulseGold 1.1s infinite ease-in-out;
+}
+
+.live-audio-pill.is-listening {
+  border-color: #2ECC71;
+  box-shadow: 0 0 16px rgba(46, 204, 113, 0.45);
+}
+
+.live-audio-pill.is-listening .audio-live-dot {
+  background: #2ECC71;
+  animation: audioPulseGreen 1.1s infinite ease-in-out;
+}
+
+@keyframes audioPulseGreen {
+  0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+  70% { transform: scale(1.2); box-shadow: 0 0 0 8px rgba(46, 204, 113, 0); }
+  100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
 }
 
 .live-audio-pill.is-muted {

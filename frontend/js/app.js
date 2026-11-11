@@ -88,23 +88,42 @@ class NesaApp {
       }
     }
 
-    // Tangani inisialisasi peta per layar
+    // Tangani inisialisasi dan isolasi peta per layar
     if (screenId === 'screen-free-mode') {
       this.activeMapMode = 'free';
+      if (window.nesaMap) {
+        window.nesaMap.clearJoggingTrack();
+      }
       setTimeout(() => {
         nesaMap.initMap('free-map-container');
         if (nesaMap.map) nesaMap.map.invalidateSize();
-      }, 200);
+      }, 150);
     } else if (screenId === 'screen-challenge-mode') {
+      if (window.nesaMap) {
+        window.nesaMap.clearJoggingTrack();
+      }
       this.renderChallengeCards();
     } else if (screenId === 'screen-jogging-mode') {
       this.activeMapMode = 'jogging';
+      if (window.nesaMap) {
+        window.nesaMap.clearRoute();
+      }
+      const navCard = document.getElementById('free-nav-active-card');
+      if (navCard) navCard.classList.remove('is-active');
+
       setTimeout(() => {
         nesaMap.initMap('jogging-map-container');
         nesaMap.showJoggingTrack();
         this.updateJoggingStepUI();
         if (nesaMap.map) nesaMap.map.invalidateSize();
-      }, 200);
+      }, 150);
+    } else {
+      // Screen greeting, landing, dll: bersihkan jogging track & rute lama
+      if (window.nesaMap) {
+        window.nesaMap.clearJoggingTrack();
+      }
+      const navCard = document.getElementById('free-nav-active-card');
+      if (navCard) navCard.classList.remove('is-active');
     }
   }
 
@@ -122,9 +141,10 @@ class NesaApp {
         if (isListening) {
           audioPill.classList.remove('is-speaking', 'is-muted');
           audioPill.classList.add('is-listening');
-          statusLabel.textContent = '🔴 Live Audio Connected';
+          statusLabel.textContent = '🟢 Mendengarkan Anda...';
         } else if (!nesaVoice.isSpeaking && nesaVoice.callMode) {
           audioPill.classList.remove('is-listening');
+          statusLabel.textContent = '🔴 Live Audio Aktif';
         }
       }
     };
@@ -139,7 +159,8 @@ class NesaApp {
         } else {
           audioPill.classList.remove('is-speaking');
           if (nesaVoice.callMode) {
-            statusLabel.textContent = '🔴 Live Audio Connected';
+            audioPill.classList.add('is-listening');
+            statusLabel.textContent = '🟢 Mendengarkan Anda...';
           }
         }
       }
@@ -153,9 +174,10 @@ class NesaApp {
             audioPill.classList.add('is-active');
           }
           audioPill.classList.remove('is-muted');
-          statusLabel.textContent = '🔴 Live Audio Connected';
-          this.showToast('🎙️ Live Audio Terhubung: Bicara langsung tanpa tombol!');
+          statusLabel.textContent = '🟢 Live Audio Aktif';
+          this.showToast('🎙️ Live Audio Terhubung: Bebas bicara tanpa tekan tombol!');
         } else {
+          audioPill.classList.remove('is-listening');
           audioPill.classList.add('is-muted');
           statusLabel.textContent = '🔇 Audio Terjeda (Ketuk)';
           this.showToast('🔇 Live Audio Dijeda');
@@ -317,25 +339,23 @@ class NesaApp {
     const btnMiniAvatar = document.getElementById('btn-mini-avatar-trigger');
     const navTabFreeGuide = document.getElementById('nav-tab-free-guide');
     const navTabFreeMap = document.getElementById('nav-tab-free-map');
-    const drawerAiGuide = document.getElementById('drawer-ai-guide');
     const btnCloseDrawer = document.getElementById('btn-close-drawer');
+    const btnCancelNav = document.getElementById('btn-cancel-free-nav');
 
-    const openDrawer = () => {
-      if (drawerAiGuide) drawerAiGuide.classList.add('is-open');
-      if (navTabFreeGuide) navTabFreeGuide.classList.add('is-active');
-      if (navTabFreeMap) navTabFreeMap.classList.remove('is-active');
-    };
+    if (btnMiniAvatar) btnMiniAvatar.addEventListener('click', () => this.openDrawer());
+    if (navTabFreeGuide) navTabFreeGuide.addEventListener('click', () => this.openDrawer());
+    if (navTabFreeMap) navTabFreeMap.addEventListener('click', () => this.closeDrawer());
+    if (btnCloseDrawer) btnCloseDrawer.addEventListener('click', () => this.closeDrawer());
 
-    const closeDrawer = () => {
-      if (drawerAiGuide) drawerAiGuide.classList.remove('is-open');
-      if (navTabFreeGuide) navTabFreeGuide.classList.remove('is-active');
-      if (navTabFreeMap) navTabFreeMap.classList.add('is-active');
-    };
-
-    if (btnMiniAvatar) btnMiniAvatar.addEventListener('click', openDrawer);
-    if (navTabFreeGuide) navTabFreeGuide.addEventListener('click', openDrawer);
-    if (navTabFreeMap) navTabFreeMap.addEventListener('click', closeDrawer);
-    if (btnCloseDrawer) btnCloseDrawer.addEventListener('click', closeDrawer);
+    // Tombol tutup rute navigasi di floating banner
+    if (btnCancelNav) {
+      btnCancelNav.addEventListener('click', () => {
+        if (window.nesaMap) window.nesaMap.clearRoute();
+        const navCard = document.getElementById('free-nav-active-card');
+        if (navCard) navCard.classList.remove('is-active');
+        this.showToast('🧭 Navigasi rute ditutup');
+      });
+    }
 
     // Kirim pesan teks di Drawer
     const btnDrawerSend = document.getElementById('btn-drawer-send');
@@ -422,6 +442,9 @@ class NesaApp {
     const btnJoggingBack = document.getElementById('btn-jogging-back');
     if (btnJoggingBack) {
       btnJoggingBack.addEventListener('click', () => {
+        if (window.nesaMap) {
+          window.nesaMap.clearJoggingTrack();
+        }
         this.showScreen('screen-greeting');
       });
     }
@@ -816,6 +839,37 @@ class NesaApp {
     }
   }
 
+  openDrawer() {
+    const drawerAiGuide = document.getElementById('drawer-ai-guide');
+    const navTabFreeGuide = document.getElementById('nav-tab-free-guide');
+    const navTabFreeMap = document.getElementById('nav-tab-free-map');
+    if (drawerAiGuide) drawerAiGuide.classList.add('is-open');
+    if (navTabFreeGuide) navTabFreeGuide.classList.add('is-active');
+    if (navTabFreeMap) navTabFreeMap.classList.remove('is-active');
+  }
+
+  closeDrawer() {
+    const drawerAiGuide = document.getElementById('drawer-ai-guide');
+    const navTabFreeGuide = document.getElementById('nav-tab-free-guide');
+    const navTabFreeMap = document.getElementById('nav-tab-free-map');
+    if (drawerAiGuide) drawerAiGuide.classList.remove('is-open');
+    if (navTabFreeGuide) navTabFreeGuide.classList.remove('is-active');
+    if (navTabFreeMap) navTabFreeMap.classList.add('is-active');
+  }
+
+  showNavigationFloatingCard(name, activeRoute) {
+    const navCard = document.getElementById('free-nav-active-card');
+    const titleEl = document.getElementById('free-nav-dest-name');
+    const distEl = document.getElementById('free-nav-dest-distance');
+    if (navCard && titleEl) {
+      titleEl.textContent = name;
+      if (distEl && activeRoute) {
+        distEl.textContent = `~${activeRoute.distMeters || 120} m (±${activeRoute.estMinutes || 2} mnt)`;
+      }
+      navCard.classList.add('is-active');
+    }
+  }
+
   /**
    * Navigasi langsung ke titik POI di peta
    */
@@ -823,12 +877,23 @@ class NesaApp {
     if (this.currentScreen !== 'screen-free-mode') {
       this.showScreen('screen-free-mode');
     }
-    if (window.nesaMap) {
-      if (!window.nesaMap.map) {
-        window.nesaMap.initMap('free-map-container');
+
+    // Selalu tutup drawer AI Guide agar peta dan garis navigasi tampil penuh dan jelas
+    this.closeDrawer();
+
+    const executeRoute = () => {
+      if (window.nesaMap) {
+        if (!window.nesaMap.map || window.nesaMap.currentContainerId !== 'free-map-container') {
+          window.nesaMap.initMap('free-map-container');
+        }
+        const activeRoute = window.nesaMap.drawRouteTo(lat, lng, name);
+        this.showNavigationFloatingCard(name, activeRoute);
       }
-      window.nesaMap.drawRouteTo(lat, lng, name);
-    }
+    };
+
+    // Beri sedikit jeda transisi rendering map
+    setTimeout(executeRoute, 120);
+
     if (shouldSpeak) {
       const msg = `Menampilkan rute menuju ${name}. Ikuti garis panduan di peta.`;
       nesaVoice.speak(msg);
@@ -951,9 +1016,8 @@ class NesaApp {
     }
 
     if (targetAnimalSpot) {
-      if (this.currentScreen !== 'screen-free-mode') this.showScreen('screen-free-mode');
       this.routeToPoint(targetAnimalSpot.lat, targetAnimalSpot.lng, targetAnimalSpot.name, false);
-      this.highlightSpotById(targetAnimalSpot.id, true);
+      this.highlightSpotById(targetAnimalSpot.id, false);
       reply = `Rute menuju ${targetAnimalSpot.name} telah ditampilkan di peta. Silakan ikuti garis panduannya.`;
       if (bubble) bubble.textContent = `Nesa: "${reply}"`;
       nesaVoice.speak(reply);
@@ -962,29 +1026,29 @@ class NesaApp {
 
     // Pencarian Fasilitas Kampus & Hutan UNESA
     if (text.includes('musholla') || text.includes('masjid') || text.includes('sholat')) {
-      if (this.currentScreen !== 'screen-free-mode') this.showScreen('screen-free-mode');
       const item = NESA_DATA.poi.musholla[0];
       this.routeToPoint(item.lat, item.lng, item.name, false);
+      this.highlightSpotById(item.id, false);
       reply = `Aku telah menunjukkan rute ke ${item.name} di peta.`;
     } else if (text.includes('toilet') || text.includes('kamar mandi') || text.includes('wc')) {
-      if (this.currentScreen !== 'screen-free-mode') this.showScreen('screen-free-mode');
       const item = NESA_DATA.poi.toilet[0];
       this.routeToPoint(item.lat, item.lng, item.name, false);
+      this.highlightSpotById(item.id, false);
       reply = `Toilet terdekat ada di ${item.name}. Rutenya sudah tampil di peta!`;
     } else if (text.includes('parkir') || text.includes('motor') || text.includes('mobil')) {
-      if (this.currentScreen !== 'screen-free-mode') this.showScreen('screen-free-mode');
       const item = NESA_DATA.poi.parkiran[0];
       this.routeToPoint(item.lat, item.lng, item.name, false);
+      this.highlightSpotById(item.id, false);
       reply = `Lokasi ${item.name} telah dipetakan untukmu.`;
     } else if (text.includes('hutan') || text.includes('trekking') || text.includes('pohon')) {
-      if (this.currentScreen !== 'screen-free-mode') this.showScreen('screen-free-mode');
       const item = NESA_DATA.poi.hutan[0];
       this.routeToPoint(item.lat, item.lng, item.name, false);
+      this.highlightSpotById(item.id, false);
       reply = `Menuju ke ${item.name}. Nikmati kesegaran udara kanopi Hutan UNESA!`;
     } else if (text.includes('gerbang') || text.includes('pintu masuk') || text.includes('gate')) {
-      if (this.currentScreen !== 'screen-free-mode') this.showScreen('screen-free-mode');
       const item = NESA_DATA.poi.gerbang[0];
       this.routeToPoint(item.lat, item.lng, item.name, false);
+      this.highlightSpotById(item.id, false);
       reply = `Menampilkan rute ke ${item.name}. Selamat datang di kampus UNESA!`;
     } else {
       // Pertanyaan edukasi/flora/fauna/arah dialirkan ke Gemini AI via backend
@@ -1080,8 +1144,9 @@ class NesaApp {
     if (this.currentScreen !== 'screen-free-mode') {
       this.showScreen('screen-free-mode');
     }
+    this.closeDrawer();
 
-    const spot = (NESA_DATA.spots || []).find(s => s.id === cleanId);
+    const spot = window.nesaMap ? window.nesaMap.findSpotAnywhere(cleanId) : null;
     if (spot && drawRoute) {
       this.routeToPoint(spot.lat, spot.lng, spot.name, false);
     }
@@ -1090,7 +1155,7 @@ class NesaApp {
       if (window.nesaMap) {
         window.nesaMap.highlightSpot(cleanId);
       }
-    }, 400);
+    }, 350);
   }
 
   /**
