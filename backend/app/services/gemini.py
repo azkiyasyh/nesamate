@@ -19,7 +19,7 @@ if not PROMPT_FILE.exists():
 class GeminiService:
     def __init__(self):
         self.api_key = os.getenv("GEMINI_API_KEY", "").strip()
-        self.model_name = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+        self.model_name = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
         self._load_system_prompt()
         self.client = None
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
@@ -99,11 +99,12 @@ class GeminiService:
 
         try:
             future = self.executor.submit(_call_gemini)
-            response = future.result(timeout=12.0)
+            response = future.result(timeout=20.0)
             text = response.text.strip()
             return self._parse_json_response(text, user_name)
         except Exception as err:
-            print(f"[GeminiService] Fallback aktif (Gemini timeout/error: {err})")
+            err_msg = repr(err) if not str(err) else str(err)
+            print(f"[GeminiService] Fallback aktif (Gemini error: {err_msg})")
             return self._smart_fallback(user_name, clean_input, location_block, context_block, mode)
 
     def generate_speech_audio(self, text: str) -> Optional[str]:
