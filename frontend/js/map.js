@@ -79,9 +79,9 @@ class NesaMapManager {
       attributionControl: false
     });
 
-    // 1. OpenStreetMap Standard Tile Layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
+    // 1. Esri World Street Map Tile Layer (Stabil, Bebas Error 403 Chrome)
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri',
       maxZoom: 19
     }).addTo(this.map);
 
@@ -481,6 +481,10 @@ class NesaMapManager {
    * Gambar garis rute navigasi mandiri berdesain Safari-Natural presisi (Anti 404)
    */
   drawRouteTo(targetLat, targetLng, destinationName = 'Destinasi') {
+    if (typeof window.setAvatarState === 'function') {
+      window.setAvatarState('compact');
+    }
+
     if (!this.map) {
       this.pendingRoute = { targetLat, targetLng, destinationName };
       return;

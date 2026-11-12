@@ -30,6 +30,176 @@ const CHALLENGE_ROUTE_GUIDES = {
   }
 };
 
+// ========================================================
+// LIVE2D AVATAR CONTROLLER (PixiJS v6.5.8 + Cubism v4)
+// ========================================================
+let pixiApp = null;
+let nesaModel = null;
+let isModelLoading = false;
+
+function setAvatarState(state) {
+  // Safe helper jika dipanggil oleh modul lain
+}
+window.setAvatarState = setAvatarState;
+
+function attachAvatarToScreen(screenId) {
+  const container = document.getElementById('nesa-avatar-container');
+  if (!container) return;
+
+  if (screenId === 'screen-landing') {
+    const landingSlot = document.getElementById('landing-avatar-slot');
+    if (landingSlot && !landingSlot.contains(container)) {
+      landingSlot.appendChild(container);
+    }
+  } else if (screenId === 'screen-greeting') {
+    const greetingSlot = document.getElementById('greeting-avatar-slot');
+    if (greetingSlot && !greetingSlot.contains(container)) {
+      greetingSlot.appendChild(container);
+    }
+  }
+}
+window.attachAvatarToScreen = attachAvatarToScreen;
+
+async function initLive2DAvatar() {
+  const container = document.getElementById('nesa-avatar-container');
+  if (!container) return;
+
+  // Pastikan elemen canvas selalu ada di DOM
+  let canvas = document.getElementById('canvas-live2d');
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.id = 'canvas-live2d';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.display = 'block';
+    canvas.style.pointerEvents = 'none';
+    container.appendChild(canvas);
+  }
+
+  // Jika sedang proses memuat, tunggu hingga selesai
+  if (isModelLoading) return;
+
+  // Jika model & pixiApp sudah ada dan terpasang aktif di canvas
+  if (pixiApp && nesaModel && pixiApp.view === canvas && canvas.parentElement) {
+    try {
+      pixiApp.renderer.resize(260, 260);
+      nesaModel.anchor.set(0.5, 0.5);
+      nesaModel.x = 130;
+      nesaModel.y = 145;
+      const baseW = nesaModel.internalModel?.originalWidth || nesaModel.width || 400;
+      const baseH = nesaModel.internalModel?.originalHeight || nesaModel.height || 400;
+      const scale = Math.min((260 * 0.65) / baseW, (260 * 0.65) / baseH);
+      nesaModel.scale.set(scale);
+      return;
+    } catch (e) {}
+  }
+
+  // Cek apakah PixiJS dan Live2D display library sudah tersedia
+  if (typeof PIXI === 'undefined' || !PIXI.live2d || !PIXI.live2d.Live2DModel) {
+    console.warn('[Live2D] Library PIXI atau pixi-live2d belum siap, mencoba lagi...');
+    setTimeout(initLive2DAvatar, 200);
+    return;
+  }
+
+  // Hapus instance Pixi lama TANPA menghapus elemen canvas dari DOM
+  if (pixiApp) {
+    try {
+      pixiApp.destroy(false);
+    } catch (e) {}
+    pixiApp = null;
+    nesaModel = null;
+  }
+
+  isModelLoading = true;
+
+  try {
+    // 1. Register Ticker Pixi (WAJIB agar model terupdate pada render loop)
+    if (PIXI.live2d.Live2DModel.registerTicker) {
+      PIXI.live2d.Live2DModel.registerTicker(PIXI.Ticker);
+    }
+
+    pixiApp = new PIXI.Application({
+      view: canvas,
+      transparent: true,
+      autoDensity: true,
+      resolution: window.devicePixelRatio || 1,
+      width: 260,
+      height: 260
+    });
+
+    // 2. Load model Live2D Nesa (dukung path primer & fallback)
+    let loadedModel = null;
+    try {
+      loadedModel = await PIXI.live2d.Live2DModel.from('assets/live2d/nesa/nesa.model3.json', { autoInteract: false });
+    } catch (e1) {
+      console.warn('[Live2D] Path primer nesa.model3.json gagal, mencoba fallback path:', e1);
+      try {
+        loadedModel = await PIXI.live2d.Live2DModel.from('assets/AVA Nesa.model3.json', { autoInteract: false });
+      } catch (e2) {
+        console.error('[Live2D] Path fallback juga gagal:', e2);
+      }
+    }
+
+    if (!loadedModel) {
+      throw new Error('Model Live2D tidak dapat dimuat dari assets');
+    }
+
+    nesaModel = loadedModel;
+    pixiApp.stage.addChild(nesaModel);
+
+    // 3. KUNCI POSISI DI TENGAH (Anchor & Alignment)
+    nesaModel.anchor.set(0.5, 0.5);
+    nesaModel.x = 130; // Setengah dari lebar 260px
+    nesaModel.y = 145; // Posisi pas di tengah, tidak melongok close-up
+
+    // 4. KUNCI SKALA PRESISI (0.65 dari container 260px)
+    const baseW = nesaModel.internalModel?.originalWidth || nesaModel.width || 400;
+    const baseH = nesaModel.internalModel?.originalHeight || nesaModel.height || 400;
+    const scale = Math.min(
+      (260 * 0.65) / baseW,
+      (260 * 0.65) / baseH
+    );
+    nesaModel.scale.set(scale);
+
+    nesaModel.interactive = true;
+    window.nesaModel = nesaModel;
+    window.pixiApp = pixiApp;
+
+    // Bersihkan fallback image jika ada
+    const existingFallback = document.getElementById('nesa-avatar-fallback');
+    if (existingFallback) existingFallback.remove();
+
+    console.log("SUCCESS: Live2D Nesa berhasil dipasang proporsional!");
+  } catch (err) {
+    console.error("Gagal load Live2D Nesa:", err);
+    // Tampilkan avatar fallback tekstur jika Live2D gagal agar tampilan tidak kosong
+    if (!nesaModel && container) {
+      let fallbackImg = document.getElementById('nesa-avatar-fallback');
+      if (!fallbackImg) {
+        fallbackImg = document.createElement('img');
+        fallbackImg.id = 'nesa-avatar-fallback';
+        fallbackImg.src = 'assets/live2d/nesa/nesa.2048/texture_00.png';
+        fallbackImg.style.width = '180px';
+        fallbackImg.style.height = '180px';
+        fallbackImg.style.objectFit = 'contain';
+        fallbackImg.style.pointerEvents = 'none';
+        container.appendChild(fallbackImg);
+      }
+    }
+  } finally {
+    isModelLoading = false;
+  }
+}
+
+window.initLive2DAvatar = initLive2DAvatar;
+
+// Jalankan otomatis saat web siap
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  initLive2DAvatar();
+} else {
+  document.addEventListener('DOMContentLoaded', initLive2DAvatar);
+}
+
 class NesaApp {
   constructor() {
     this.userName = localStorage.getItem('nesamate_user_name') || '';
@@ -55,6 +225,7 @@ class NesaApp {
   }
 
   init() {
+    initLive2DAvatar();
     this.setupSpeechListeners();
     this.setupEventListeners();
 
@@ -65,10 +236,25 @@ class NesaApp {
     }
   }
 
+  setAvatarState(state) {
+    return setAvatarState(state);
+  }
+
   /**
    * Menampilkan layar tertentu secara bersih tanpa bertumpuk
    */
   showScreen(screenId) {
+    const container = document.querySelector('.mobile-device-container');
+    if (container) {
+      container.classList.toggle('is-onboarding', screenId === 'screen-landing');
+    }
+
+    // DEFAULT STATE: Avatar Nesa HARUS TAMPIL BESAR dan jelas di layar utama pada Mode Eksplorasi, Mode Jogging, maupun Mode Tantangan (Challenge Mode).
+    // Avatar TIDAK BOLEH otomatis mengecil hanya karena berpindah mode atau saat Nesa sedang berbicara biasa.
+    if (screenId !== 'screen-landing') {
+      this.setAvatarState('full');
+    }
+
     const allScreens = document.querySelectorAll('.screen-view');
     allScreens.forEach(s => s.classList.remove('is-active'));
 
@@ -78,18 +264,15 @@ class NesaApp {
       this.currentScreen = screenId;
     }
 
-    // Kelola tampilan Live Audio Indicator: Sembunyikan hanya saat di Landing Onboarding
-    const audioPill = document.getElementById('live-audio-pill');
-    if (audioPill) {
-      if (screenId === 'screen-landing') {
-        audioPill.classList.remove('is-active');
-      } else if (nesaVoice.callMode) {
-        audioPill.classList.add('is-active');
-      }
-    }
+    // Pindahkan container avatar ke slot layar aktif jika perlu
+    attachAvatarToScreen(screenId);
 
     // Tangani inisialisasi dan isolasi peta per layar
-    if (screenId === 'screen-free-mode') {
+    if (screenId === 'screen-greeting' || screenId === 'screen-landing') {
+      setTimeout(() => {
+        initLive2DAvatar();
+      }, 50);
+    } else if (screenId === 'screen-free-mode') {
       this.activeMapMode = 'free';
       if (window.nesaMap) {
         window.nesaMap.clearJoggingTrack();
@@ -131,59 +314,7 @@ class NesaApp {
    * Setup Web Speech Listener & Feedback UI (Hands-Free Real-Time Audio Call)
    */
   setupSpeechListeners() {
-    const audioPill = document.getElementById('live-audio-pill');
-    const statusLabel = document.getElementById('live-audio-status-label');
     const drawerBubble = document.getElementById('drawer-chat-bubble');
-
-    // Listener status mendengarkan (STT)
-    nesaVoice.onListeningStateChange = (isListening) => {
-      if (audioPill && statusLabel) {
-        if (isListening) {
-          audioPill.classList.remove('is-speaking', 'is-muted');
-          audioPill.classList.add('is-listening');
-          statusLabel.textContent = '🟢 Mendengarkan Anda...';
-        } else if (!nesaVoice.isSpeaking && nesaVoice.callMode) {
-          audioPill.classList.remove('is-listening');
-          statusLabel.textContent = '🔴 Live Audio Aktif';
-        }
-      }
-    };
-
-    // Listener status berbicara (TTS)
-    nesaVoice.onSpeakingStateChange = (isSpeaking) => {
-      if (audioPill && statusLabel) {
-        if (isSpeaking) {
-          audioPill.classList.remove('is-listening', 'is-muted');
-          audioPill.classList.add('is-speaking');
-          statusLabel.textContent = '🔊 Nesa Berbicara...';
-        } else {
-          audioPill.classList.remove('is-speaking');
-          if (nesaVoice.callMode) {
-            audioPill.classList.add('is-listening');
-            statusLabel.textContent = '🟢 Mendengarkan Anda...';
-          }
-        }
-      }
-    };
-
-    // Listener status mode call otomatis
-    nesaVoice.onCallStateChange = (isCallActive) => {
-      if (audioPill && statusLabel) {
-        if (isCallActive) {
-          if (this.currentScreen !== 'screen-landing') {
-            audioPill.classList.add('is-active');
-          }
-          audioPill.classList.remove('is-muted');
-          statusLabel.textContent = '🟢 Live Audio Aktif';
-          this.showToast('🎙️ Live Audio Terhubung: Bebas bicara tanpa tekan tombol!');
-        } else {
-          audioPill.classList.remove('is-listening');
-          audioPill.classList.add('is-muted');
-          statusLabel.textContent = '🔇 Audio Terjeda (Ketuk)';
-          this.showToast('🔇 Live Audio Dijeda');
-        }
-      }
-    };
 
     // Hasil transkrip suara pengguna (Hands-Free Call)
     nesaVoice.onTranscriptResult = (transcript) => {
@@ -192,6 +323,14 @@ class NesaApp {
         drawerBubble.textContent = `Anda: "${transcript}"`;
       }
       this.handleUserVoiceQuery(transcript);
+    };
+
+    window.handleUserAudioQuery = (text) => {
+      console.log('[NesaMate AudioQuery] User Input:', text);
+      if (drawerBubble) {
+        drawerBubble.textContent = `Anda: "${text}"`;
+      }
+      this.handleUserVoiceQuery(text);
     };
   }
 
@@ -202,44 +341,54 @@ class NesaApp {
     // -----------------------------------------------------------------
     // LAYAR 1: LANDING PAGE
     // -----------------------------------------------------------------
-    const btnStart = document.getElementById('btn-start');
+    const startBtn = document.getElementById('btn-start') || document.getElementById('start-btn') || document.querySelector('.btn-start');
     const nameInput = document.getElementById('input-user-name');
 
-    const handleStart = async () => {
-      const val = nameInput.value.trim();
-      if (!val) {
-        alert('Silakan masukkan nama panggilan Anda terlebih dahulu agar Nesa bisa menyapa.');
-        nameInput.focus();
-        return;
+    const handleStart = async (e) => {
+      if (e && typeof e.preventDefault === 'function') {
+        e.preventDefault();
       }
+      console.log("Tombol Start diklik!");
 
+      const val = (nameInput ? nameInput.value.trim() : '') || this.userName || 'Teman';
       this.userName = val;
       localStorage.setItem('nesamate_user_name', val);
 
-      // Registrasi sesi ke backend
-      try {
-        const sRes = await fetch('/api/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_name: val })
-        });
-        if (sRes.ok) {
-          const sData = await sRes.json();
+      // Registrasi sesi ke backend (non-blocking agar transisi lancar)
+      fetch('/api/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_name: val })
+      }).then(res => res.json()).then(sData => {
+        if (sData && sData.session_id) {
           this.sessionId = sData.session_id;
           localStorage.setItem('nesamate_session_id', sData.session_id);
         }
-      } catch (err) {
+      }).catch(err => {
         console.warn('[NesaMate API] Session API offline, menggunakan sesi lokal:', err);
+      });
+
+      // Unmute/resume audio context & Web Speech API dari gesture klik pengguna
+      if (window.speechSynthesis && typeof window.speechSynthesis.resume === 'function') {
+        window.speechSynthesis.resume();
       }
 
-      // A. PERMINTAAN IZIN MIC SEJAK START (ONBOARDING)
-      await nesaVoice.requestMicrophonePermission();
+      // Permintaan izin mic (non-blocking)
+      try {
+        if (window.nesaVoice) {
+          nesaVoice.requestMicrophonePermission().catch(() => {});
+          nesaVoice.setCallMode(true);
+        }
+      } catch (err) {}
 
-      // B. AKTIFKAN MODE HANDS-FREE 2-WAY REAL-TIME AUDIO CALL
-      nesaVoice.setCallMode(true);
+      // Pindah dari Landing Page ke Main Screen / Menu Mode
+      const landingScreen = document.getElementById('screen-landing');
+      const mainScreen = document.getElementById('screen-greeting') || document.getElementById('screen-main');
+      if (landingScreen) landingScreen.classList.remove('is-active');
+      if (mainScreen) mainScreen.classList.add('is-active');
 
-      // Pindah ke Layar 2 (Greeting Nesa)
       this.showScreen('screen-greeting');
+      initLive2DAvatar();
 
       // Update Sapaan Nesa sesuai PRD & Mockup
       const greetingText = `Halo ${this.userName}! Aku Nesa si Rusa, pemandu wisatamu hari ini di Hutan Kota UNESA. Mau mulai dari eksplorasi bebas, berpetualang, atau jogging?`;
@@ -248,24 +397,20 @@ class NesaApp {
         greetingEl.textContent = `"${greetingText}"`;
       }
 
-      // Mainkan suara ramah Nesa (STT akan otomatis ON saat TTS selesai)
+      // Mainkan suara ramah Nesa (Web Speech API)
       setTimeout(() => {
-        nesaVoice.speak(greetingText);
-      }, 400);
+        if (window.nesaVoice) {
+          nesaVoice.speak(greetingText);
+        }
+      }, 300);
     };
 
-    if (btnStart) btnStart.addEventListener('click', handleStart);
+    if (startBtn) {
+      startBtn.addEventListener('click', handleStart);
+    }
     if (nameInput) {
       nameInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleStart();
-      });
-    }
-
-    // Indikator Visual Melayang (Live Audio Connected / Mute Toggle)
-    const audioPill = document.getElementById('live-audio-pill');
-    if (audioPill) {
-      audioPill.addEventListener('click', () => {
-        nesaVoice.toggleCallMode();
+        if (e.key === 'Enter') handleStart(e);
       });
     }
 
@@ -347,12 +492,24 @@ class NesaApp {
     if (navTabFreeMap) navTabFreeMap.addEventListener('click', () => this.closeDrawer());
     if (btnCloseDrawer) btnCloseDrawer.addEventListener('click', () => this.closeDrawer());
 
+    // Interaksi klik avatar: jika compact, kembalikan ke full
+    const avatarContainer = document.getElementById('nesa-avatar-container');
+    if (avatarContainer) {
+      avatarContainer.addEventListener('click', () => {
+        if (avatarContainer.classList.contains('avatar-compact')) {
+          this.setAvatarState('full');
+          this.showToast('✨ Avatar Nesa diperbesar');
+        }
+      });
+    }
+
     // Tombol tutup rute navigasi di floating banner
     if (btnCancelNav) {
       btnCancelNav.addEventListener('click', () => {
         if (window.nesaMap) window.nesaMap.clearRoute();
         const navCard = document.getElementById('free-nav-active-card');
         if (navCard) navCard.classList.remove('is-active');
+        this.setAvatarState('full');
         this.showToast('🧭 Navigasi rute ditutup');
       });
     }
@@ -393,10 +550,23 @@ class NesaApp {
 
     if (navTabMisi) {
       navTabMisi.addEventListener('click', () => {
+        this.setAvatarState('full');
         navTabMisi.classList.add('is-active');
         navTabMap.classList.remove('is-active');
         if (cardsContainer) cardsContainer.style.display = 'flex';
         if (mapContainer) mapContainer.classList.remove('is-visible');
+      });
+    }
+
+    if (cardsContainer) {
+      cardsContainer.addEventListener('focusin', (event) => {
+        if (event.target.matches('.passcode-pill-input')) this.setAvatarState('compact');
+      });
+      cardsContainer.addEventListener('focusout', (event) => {
+        if (!event.target.matches('.passcode-pill-input')) return;
+        setTimeout(() => {
+          if (!cardsContainer.querySelector('.passcode-pill-input:focus')) this.setAvatarState('full');
+        }, 150);
       });
     }
 
@@ -734,6 +904,7 @@ class NesaApp {
    * Tampilkan subview peta rute pos dan gambar jalurnya
    */
   showChallengeMapSubView(speakGuide = false) {
+    this.setAvatarState('compact');
     const navTabMisi = document.getElementById('nav-tab-challenge-misi');
     const navTabMap = document.getElementById('nav-tab-challenge-map');
     const cardsContainer = document.getElementById('challenge-cards-container');
@@ -840,6 +1011,7 @@ class NesaApp {
   }
 
   openDrawer() {
+    this.setAvatarState('compact');
     const drawerAiGuide = document.getElementById('drawer-ai-guide');
     const navTabFreeGuide = document.getElementById('nav-tab-free-guide');
     const navTabFreeMap = document.getElementById('nav-tab-free-map');
@@ -855,9 +1027,15 @@ class NesaApp {
     if (drawerAiGuide) drawerAiGuide.classList.remove('is-open');
     if (navTabFreeGuide) navTabFreeGuide.classList.remove('is-active');
     if (navTabFreeMap) navTabFreeMap.classList.add('is-active');
+
+    const navCard = document.getElementById('free-nav-active-card');
+    if (!navCard || !navCard.classList.contains('is-active')) {
+      this.setAvatarState('full');
+    }
   }
 
   showNavigationFloatingCard(name, activeRoute) {
+    this.setAvatarState('compact');
     const navCard = document.getElementById('free-nav-active-card');
     const titleEl = document.getElementById('free-nav-dest-name');
     const distEl = document.getElementById('free-nav-dest-distance');
@@ -1122,6 +1300,8 @@ class NesaApp {
       } else if (data.action === 'show_spot_detail' && data.action_payload && data.action_payload.spot_id) {
         if (this.currentScreen !== 'screen-free-mode') this.showScreen('screen-free-mode');
         this.highlightSpotById(data.action_payload.spot_id);
+      } else if (['show_chart', 'show_data_panel', 'show_image', 'show_visual'].includes(data.action)) {
+        this.setAvatarState('compact');
       }
     } catch (err) {
       console.warn('[NesaMate AI] Error pemanggilan API chat:', err);
@@ -1173,7 +1353,8 @@ class NesaApp {
   }
 }
 
-// Inisialisasi aplikasi saat DOM siap
+// Inisialisasi aplikasi dan render Live2D saat DOM siap (Landing Page)
 window.addEventListener('DOMContentLoaded', () => {
+  initLive2DAvatar();
   window.nesaApp = new NesaApp();
 });

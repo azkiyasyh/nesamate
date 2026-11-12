@@ -21,6 +21,12 @@
 
   <!-- Custom CSS Design System (Anti-Bertumpuk & Safari Natural) -->
   <link rel="stylesheet" href="css/style.css?v=2.2.1">
+
+  <!-- Cubism Core & PixiJS v6.5.8 -->
+  <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+  <script>if (typeof Live2DCubismCore === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/gh/doric/cubism-web-samples/Samples/TypeScript/Demo/src/CubismCore/live2dcubismcore.min.js"><\/script>');</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.8/browser/pixi.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/cubism4.min.js"></script>
 </head>
 <body>
 
@@ -34,55 +40,22 @@
          ======================================================== -->
     <section id="screen-landing" class="screen-view landing-screen is-active">
       <div class="landing-header">
-        <span class="brand-badge-pill">Kampus Hutan UNESA Lidah Wetan</span>
+        <span class="brand-badge-pill">Hutan Kota UNESA Lidah Wetan</span>
         <h1 class="landing-title">NesaMate</h1>
         <p class="landing-subtitle">AI Virtual Tour Guide & Navigasi Cerdas</p>
       </div>
 
-      <!-- Mascot Nesa Si Rusa Teaser -->
-      <div class="landing-hero-mascot">
-        <!-- TODO: REPLACE WITH LIVE2D CUBISM SDK & PIXIJS CANVAS HERE -->
-        <svg viewBox="0 0 200 200" width="100%" height="100%">
-          <defs>
-            <linearGradient id="deerCoat1" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#DE9E62"/>
-              <stop offset="100%" stop-color="#C58448"/>
-            </linearGradient>
-            <linearGradient id="antlerGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#9C6B3E"/>
-              <stop offset="100%" stop-color="#7A4E26"/>
-            </linearGradient>
-          </defs>
-          <path d="M70 145 C65 175, 45 195, 40 200 L160 200 C155 195, 135 175, 130 145 Z" fill="url(#deerCoat1)"/>
-          <path d="M85 155 C85 180, 115 180, 115 155 Z" fill="#F5F0E6"/>
-          <path d="M60 140 Q100 162 140 140 Q130 156 100 160 Q70 156 60 140 Z" fill="#1E3B2F"/>
-          <circle cx="100" cy="158" r="6" fill="#C8B48A"/>
-          <path d="M65 85 C35 65, 30 95, 55 105 Z" fill="url(#deerCoat1)"/>
-          <path d="M60 87 C42 74, 40 95, 55 101 Z" fill="#FAD4B2"/>
-          <path d="M135 85 C165 65, 170 95, 145 105 Z" fill="url(#deerCoat1)"/>
-          <path d="M140 87 C158 74, 160 95, 145 101 Z" fill="#FAD4B2"/>
-          <path d="M78 72 C74 48, 62 42, 54 36 C56 46, 68 50, 72 58 C62 54, 52 56, 48 60 C56 65, 66 66, 75 74 Z" fill="url(#antlerGrad1)"/>
-          <path d="M122 72 C126 48, 138 42, 146 36 C144 46, 132 50, 128 58 C138 54, 148 56, 152 60 C144 65, 134 66, 125 74 Z" fill="url(#antlerGrad1)"/>
-          <ellipse cx="100" cy="105" rx="42" ry="38" fill="url(#deerCoat1)"/>
-          <ellipse cx="100" cy="118" rx="26" ry="18" fill="#F5F0E6"/>
-          <circle cx="100" cy="80" r="2.5" fill="#FFFFFF" opacity="0.85"/>
-          <circle cx="92" cy="85" r="2" fill="#FFFFFF" opacity="0.85"/>
-          <circle cx="108" cy="85" r="2" fill="#FFFFFF" opacity="0.85"/>
-          <ellipse cx="72" cy="116" rx="6" ry="4" fill="#FFAAA6" opacity="0.6"/>
-          <ellipse cx="128" cy="116" rx="6" ry="4" fill="#FFAAA6" opacity="0.6"/>
-          <ellipse cx="80" cy="102" rx="6" ry="7.5" fill="#1E3B2F"/>
-          <circle cx="78" cy="99" r="2.5" fill="#FFFFFF"/>
-          <ellipse cx="120" cy="102" rx="6" ry="7.5" fill="#1E3B2F"/>
-          <circle cx="118" cy="99" r="2.5" fill="#FFFFFF"/>
-          <path d="M95 113 C95 110, 105 110, 105 113 C105 116, 100 118, 95 113 Z" fill="#4A2E16"/>
-          <path d="M94 121 Q100 126 106 121" stroke="#4A2E16" stroke-width="2" stroke-linecap="round" fill="none"/>
-        </svg>
-      </div>
+      <!-- Container Avatar Live2D Nesa -->
+      <div id="landing-avatar-slot">
+        <div id="nesa-avatar-container">
+          <canvas id="canvas-live2d"></canvas>
+        </div>
+      </div>  
 
       <!-- Form Input Pill Gray/Soft -->
       <div class="landing-form-box">
         <input type="text" id="input-user-name" class="pill-input" placeholder="Masukkan Nama Anda..." maxlength="25" autocomplete="off" />
-        <button id="btn-start" class="pill-btn-start">
+        <button id="btn-start" class="pill-btn-start btn-start">
           <span>START</span>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="9 18 15 12 9 6"></polyline>
@@ -95,9 +68,7 @@
          LAYAR 2: GREETING & PILIH MODE (MAIN ONBOARDING)
          ======================================================== -->
     <section id="screen-greeting" class="screen-view greeting-screen">
-      <div class="greeting-brand-top">
-        <span>🌿 Hutan Kota UNESA</span>
-      </div>
+
 
       <!-- Floating Speech Bubble di Atas Kepala Nesa -->
       <div class="speech-bubble-floating">
@@ -106,65 +77,19 @@
         </p>
       </div>
 
-      <!-- Avatar Nesa Si Rusa Tampil BESAR di Tengah Layar -->
-      <!-- TODO: REPLACE WITH LIVE2D CUBISM SDK & PIXIJS CANVAS HERE -->
-      <div class="mascot-stage-big">
-        <svg viewBox="0 0 200 200" width="100%" height="100%">
-          <defs>
-            <linearGradient id="deerCoat2" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#DE9E62"/>
-              <stop offset="100%" stop-color="#C58448"/>
-            </linearGradient>
-            <linearGradient id="antlerGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#9C6B3E"/>
-              <stop offset="100%" stop-color="#7A4E26"/>
-            </linearGradient>
-            <linearGradient id="scarfGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#1E3B2F"/>
-              <stop offset="100%" stop-color="#2D5444"/>
-            </linearGradient>
-          </defs>
-          <path d="M70 145 C65 175, 45 195, 40 200 L160 200 C155 195, 135 175, 130 145 Z" fill="url(#deerCoat2)"/>
-          <path d="M85 155 C85 180, 115 180, 115 155 Z" fill="#F5F0E6"/>
-          <path d="M60 140 Q100 162 140 140 Q130 156 100 160 Q70 156 60 140 Z" fill="url(#scarfGrad2)"/>
-          <path d="M93 158 L107 158 L104 182 L96 182 Z" fill="#1E3B2F"/>
-          <circle cx="100" cy="158" r="6" fill="#C8B48A" stroke="#1E3B2F" stroke-width="1.5"/>
-          <path d="M65 85 C35 65, 30 95, 55 105 Z" fill="url(#deerCoat2)"/>
-          <path d="M60 87 C42 74, 40 95, 55 101 Z" fill="#FAD4B2"/>
-          <path d="M135 85 C165 65, 170 95, 145 105 Z" fill="url(#deerCoat2)"/>
-          <path d="M140 87 C158 74, 160 95, 145 101 Z" fill="#FAD4B2"/>
-          <path d="M78 72 C74 48, 62 42, 54 36 C56 46, 68 50, 72 58 C62 54, 52 56, 48 60 C56 65, 66 66, 75 74 Z" fill="url(#antlerGrad2)"/>
-          <path d="M122 72 C126 48, 138 42, 146 36 C144 46, 132 50, 128 58 C138 54, 148 56, 152 60 C144 65, 134 66, 125 74 Z" fill="url(#antlerGrad2)"/>
-          <ellipse cx="100" cy="105" rx="42" ry="38" fill="url(#deerCoat2)"/>
-          <ellipse cx="100" cy="118" rx="26" ry="18" fill="#F5F0E6"/>
-          <circle cx="100" cy="80" r="2.5" fill="#FFFFFF" opacity="0.85"/>
-          <circle cx="92" cy="85" r="2" fill="#FFFFFF" opacity="0.85"/>
-          <circle cx="108" cy="85" r="2" fill="#FFFFFF" opacity="0.85"/>
-          <ellipse cx="72" cy="116" rx="6" ry="4" fill="#FFAAA6" opacity="0.6"/>
-          <ellipse cx="128" cy="116" rx="6" ry="4" fill="#FFAAA6" opacity="0.6"/>
-          <ellipse cx="80" cy="102" rx="6" ry="7.5" fill="#1E3B2F"/>
-          <circle cx="78" cy="99" r="2.5" fill="#FFFFFF"/>
-          <circle cx="82" cy="104" r="1.2" fill="#FFFFFF"/>
-          <ellipse cx="120" cy="102" rx="6" ry="7.5" fill="#1E3B2F"/>
-          <circle cx="118" cy="99" r="2.5" fill="#FFFFFF"/>
-          <circle cx="122" cy="104" r="1.2" fill="#FFFFFF"/>
-          <path d="M74 92 Q80 90 86 93" stroke="#7A4E26" stroke-width="2" stroke-linecap="round" fill="none"/>
-          <path d="M126 92 Q120 90 114 93" stroke="#7A4E26" stroke-width="2" stroke-linecap="round" fill="none"/>
-          <path d="M95 113 C95 110, 105 110, 105 113 C105 116, 100 118, 95 113 Z" fill="#4A2E16"/>
-          <path d="M94 121 Q100 126 106 121" stroke="#4A2E16" stroke-width="2" stroke-linecap="round" fill="none"/>
-        </svg>
-      </div>
+      <!-- Container Slot Avatar Live2D Nesa (Menu Utama Pilihan Mode) -->
+      <div id="greeting-avatar-slot"></div>
 
       <!-- 3 Pilihan Tombol Pill (Dark Forest / Sage) di Bawah -->
       <div class="mode-selection-group">
         <button id="btn-select-free-mode" class="pill-mode-btn btn-dark-forest">
-          <span>🌿</span> Mode Eksplorasi
+           Mode Eksplorasi
         </button>
         <button id="btn-select-challenge-mode" class="pill-mode-btn btn-sage">
-          <span>🎯</span> Mode Berpetualang
+           Mode Berpetualang
         </button>
         <button id="btn-select-jogging-mode" class="pill-mode-btn btn-dark-forest">
-          <span>🏃</span> Mode Jogging
+           Mode Jogging
         </button>
       </div>
     </section>
@@ -218,25 +143,6 @@
           <h4 id="free-nav-dest-name" class="nav-dest-title">Nama Destinasi</h4>
         </div>
         <button id="btn-cancel-free-nav" class="btn-cancel-nav" title="Tutup Rute Navigasi">✕</button>
-      </div>
-
-      <!-- Bottom Left: Mini Avatar Thumbnail Nesa Melayang -->
-      <!-- TODO: REPLACE WITH LIVE2D CUBISM SDK & PIXIJS CANVAS HERE -->
-      <div id="btn-mini-avatar-trigger" class="mini-avatar-fab-left" title="Tanya Nesa si Rusa">
-        <div class="mini-avatar-box">
-          <svg viewBox="0 0 200 200" width="100%" height="100%">
-            <ellipse cx="100" cy="105" rx="42" ry="38" fill="#DE9E62"/>
-            <ellipse cx="100" cy="118" rx="26" ry="18" fill="#F5F0E6"/>
-            <path d="M78 72 C74 48, 62 42, 54 36 C56 46, 68 50, 72 58 Z" fill="#7A4E26"/>
-            <path d="M122 72 C126 48, 138 42, 146 36 C144 46, 132 50, 128 58 Z" fill="#7A4E26"/>
-            <ellipse cx="80" cy="102" rx="6" ry="7.5" fill="#1E3B2F"/>
-            <circle cx="78" cy="99" r="2.5" fill="#FFFFFF"/>
-            <ellipse cx="120" cy="102" rx="6" ry="7.5" fill="#1E3B2F"/>
-            <circle cx="118" cy="99" r="2.5" fill="#FFFFFF"/>
-            <path d="M95 113 C95 110, 105 110, 105 113 Z" fill="#4A2E16"/>
-            <path d="M94 121 Q100 126 106 121" stroke="#4A2E16" stroke-width="2" fill="none"/>
-          </svg>
-        </div>
       </div>
 
       <!-- Bottom Navigation Bar (Fixed di Bawah: Tab Peta | Tab AI Guide) -->
@@ -428,12 +334,6 @@
         </button>
       </nav>
     </section>
-
-    <!-- Indikator Visual Melayang: Live Audio Connected (Hands-Free Real-Time Audio Call) -->
-    <div id="live-audio-pill" class="live-audio-pill" title="Status Live Audio Nesa (Ketuk untuk Jeda/Bicara)">
-      <span class="audio-live-dot"></span>
-      <span id="live-audio-status-label" class="audio-live-text">🔴 Live Audio Connected</span>
-    </div>
 
     <!-- FLOATING AI LATENCY BADGE -->
     <div id="ai-latency-badge" class="ai-latency-badge" style="display:none; position:fixed; top:12px; right:12px; background:rgba(30,59,47,0.92); color:#F5F0E6; padding:6px 12px; border-radius:20px; font-size:11px; z-index:9999; border:1px solid #C8B48A; font-family:monospace; box-shadow:0 4px 12px rgba(0,0,0,0.25);">

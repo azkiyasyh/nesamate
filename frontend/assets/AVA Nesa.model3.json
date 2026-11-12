@@ -1,0 +1,10 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "AVA Nesa.moc3",
+		"Textures": [
+			"AVA Nesa.2048/texture_00.png"
+		],
+		"DisplayInfo": "AVA Nesa.cdi3.json"
+	}
+}

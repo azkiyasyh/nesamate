@@ -4,6 +4,42 @@
  * Mendukung Hands-Free Continuous Voice Interaction (Bebas Tekan Tombol)
  */
 
+// ========================================================
+// LIVE2D LIP-SYNC HELPER (ParamMouthOpenY 0.2 s/d 0.8)
+// ========================================================
+let lipSyncInterval = null;
+
+function setMouthOpenY(val) {
+  try {
+    const model = window.nesaModel;
+    if (model && model.internalModel && model.internalModel.coreModel) {
+      model.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', val);
+    }
+  } catch (e) {}
+}
+
+function startLipSync() {
+  stopLipSync();
+  lipSyncInterval = setInterval(() => {
+    // Acak antara 0.2 s/d 0.8 sesuai spesifikasi
+    const val = 0.2 + Math.random() * 0.6;
+    setMouthOpenY(val);
+  }, 120);
+}
+
+function stopLipSync() {
+  if (lipSyncInterval) {
+    clearInterval(lipSyncInterval);
+    lipSyncInterval = null;
+  }
+  setMouthOpenY(0);
+}
+
+window.setNesaMouthSpeaking = function(talking) {
+  if (talking) startLipSync();
+  else stopLipSync();
+};
+
 class NesaVoiceAssistant {
   constructor() {
     this.synth = window.speechSynthesis || null;
@@ -110,6 +146,7 @@ class NesaVoiceAssistant {
 
     const finishSpeech = () => {
       this.clearSpeakingWatchdog();
+      stopLipSync(); // Hentikan gerakan mulut & set ParamMouthOpenY = 0
       this.isSpeaking = false;
       this.currentUtterance = null;
       if (this.onSpeakingStateChange) this.onSpeakingStateChange(false);
@@ -123,6 +160,7 @@ class NesaVoiceAssistant {
 
     utterance.onstart = () => {
       this.isSpeaking = true;
+      startLipSync(); // Mulai animasi mulut Live2D saat Nesa berbicara
       if (this.onSpeakingStateChange) this.onSpeakingStateChange(true);
       if (onStartCallback) onStartCallback();
     };
@@ -155,6 +193,7 @@ class NesaVoiceAssistant {
 
   stopSpeaking() {
     this.clearSpeakingWatchdog();
+    stopLipSync();
     if (this.synth && this.synth.speaking) {
       try {
         this.synth.cancel();
@@ -174,8 +213,8 @@ class NesaVoiceAssistant {
 
     this.recognition = new SpeechRecognition();
     this.recognition.lang = 'id-ID';
-    // Aktifkan continuous agar mic tidak mati sendiri setelah kalimat pertama
-    this.recognition.continuous = true;
+    // Gunakan continuous false agar lebih stabil di Chrome & Mobile (restart via callMode)
+    this.recognition.continuous = false;
     this.recognition.interimResults = false;
 
     this.recognition.onstart = () => {
