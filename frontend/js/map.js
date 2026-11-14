@@ -3,11 +3,19 @@
  * Menangani peta presisi Kampus & Hutan UNESA Lidah Wetan, marker POI kustom, rute navigasi mandiri, dan track lari.
  */
 
+// Variabel global marker pengguna & lingkaran akurasi real-time GPS
+var userMarker = null;
+var userAccuracyCircle = null;
+window.userMarker = null;
+window.userAccuracyCircle = null;
+
 class NesaMapManager {
   constructor() {
     this.map = null;
     this.currentContainerId = null;
     this.userMarker = null;
+    this.userAccuracyCircle = null;
+    this.isAutoFollow = true; // Auto-follow pergerakan GPS pengguna
     this.userCoordinates = [-7.3002, 112.6738]; // Titik default kawasan Hutan UNESA
     this.watchId = null;
     this.spotMarkers = {};
@@ -77,6 +85,11 @@ class NesaMapManager {
       zoom: NESA_DATA.zoomDefault,
       zoomControl: false, // Hilangkan zoom bawaan di atas agar tidak menabrak header bar
       attributionControl: false
+    });
+
+    // Kontrol auto-follow: nonaktifkan saat user menggeser peta secara manual
+    this.map.on('dragstart', () => {
+      this.isAutoFollow = false;
     });
 
     // 1. OpenStreetMap Tile Layer (Default Bawaan Leaflet.js)
@@ -396,7 +409,7 @@ class NesaMapManager {
   }
 
   /**
-   * Marker lokasi pengguna dengan radar pulsing
+   * Inisialisasi marker lokasi pengguna & lingkaran akurasi real-time GPS
    */
   initUserMarker() {
     const userIcon = L.divIcon({
@@ -414,46 +427,213 @@ class NesaMapManager {
     if (!this.userCoordinates || !Array.isArray(this.userCoordinates)) {
       this.userCoordinates = [-7.3002, 112.6738];
     }
-    this.userMarker = L.marker(this.userCoordinates, { icon: userIcon, zIndexOffset: 1000 }).addTo(this.map);
 
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          const dLat = lat - NESA_DATA.campusCenter[0];
-          const dLng = lng - NESA_DATA.campusCenter[1];
-          const distKm = Math.sqrt(dLat * dLat + dLng * dLng) * 111;
+    // 1. Inisialisasi Lingkaran Akurasi GPS (Palet Natural Sage #7F8C6A)
+    if (!this.userAccuracyCircle) {
+      this.userAccuracyCircle = L.circle(this.userCoordinates, {
+        radius: 15,
+        color: '#7F8C6A',
+        weight: 1.5,
+        opacity: 0.65,
+        fillColor: '#7F8C6A',
+        fillOpacity: 0.12,
+        interactive: false
+      });
+      userAccuracyCircle = this.userAccuracyCircle;
+      window.userAccuracyCircle = this.userAccuracyCircle;
+    }
+    if (this.map) {
+      if (this.userAccuracyCircle._map && this.userAccuracyCircle._map !== this.map) {
+        try { this.userAccuracyCircle.removeFrom(this.userAccuracyCircle._map); } catch (e) {}
+      }
+      if (!this.map.hasLayer(this.userAccuracyCircle)) {
+        this.userAccuracyCircle.addTo(this.map);
+      }
+    }
 
-          if (distKm <= 2.0) {
-            this.userCoordinates = [lat, lng];
-          } else {
-            console.log(`[NesaMate GPS] Lokasi riil (${lat.toFixed(4)}, ${lng.toFixed(4)}) di luar kawasan UNESA (${distKm.toFixed(1)} km). Menggunakan titik awal simulasi Hutan UNESA.`);
-            this.userCoordinates = [-7.3002, 112.6738];
-          }
+    // 2. Inisialisasi User Marker Radar
+    if (!this.userMarker) {
+      this.userMarker = L.marker(this.userCoordinates, { icon: userIcon, zIndexOffset: 1000 });
+      userMarker = this.userMarker;
+      window.userMarker = this.userMarker;
+    }
+    if (this.map) {
+      if (this.userMarker._map && this.userMarker._map !== this.map) {
+        try { this.userMarker.removeFrom(this.userMarker._map); } catch (e) {}
+      }
+      if (!this.map.hasLayer(this.userMarker)) {
+        this.userMarker.addTo(this.map);
+      }
+    }
 
-          if (this.userMarker) {
-            this.userMarker.setLatLng(this.userCoordinates);
-          }
-        },
-        () => {
-          console.log('[NesaMate GPS] Geolocation tidak diizinkan / offline. Titik simulasi Hutan UNESA aktif.');
-        },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
-      );
+    // 3. Pasang Real-Time GPS Tracking via navigator.geolocation.watchPosition
+    this.startLocationWatch();
+  }
+
+  /**
+   * Mengaktifkan pelacakan posisi GPS secara Real-Time (watchPosition)
+   */
+  startLocationWatch() {
+    if (!('geolocation' in navigator)) {
+      console.warn('[NesaMate GPS] Browser tidak mendukung navigator.geolocation.');
+      return;
+    }
+
+    if (this.watchId !== null) {
+      // Watcher sudah aktif, tidak perlu membuat duplikasi
+      return;
+    }
+
+    const geoOptions = {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    };
+
+    this.watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const accuracy = pos.coords.accuracy || 10;
+
+        this.onLocationUpdate(lat, lng, accuracy);
+      },
+      (err) => {
+        console.warn(`[NesaMate GPS] watchPosition notice (${err.code}): ${err.message}`);
+      },
+      geoOptions
+    );
+  }
+
+  /**
+   * Dipanggil setiap kali ada koordinat baru dari watchPosition
+   */
+  onLocationUpdate(lat, lng, accuracy = 10) {
+    this.userCoordinates = [lat, lng];
+
+    // Geser posisi marker pengguna secara real-time tanpa render ulang peta
+    if (this.userMarker) {
+      this.userMarker.setLatLng([lat, lng]);
+    }
+    if (window.userMarker && window.userMarker !== this.userMarker) {
+      window.userMarker.setLatLng([lat, lng]);
+    }
+
+    // Perbarui posisi & radius lingkaran akurasi GPS
+    if (this.userAccuracyCircle) {
+      this.userAccuracyCircle.setLatLng([lat, lng]);
+      if (typeof accuracy === 'number' && accuracy > 0) {
+        this.userAccuracyCircle.setRadius(accuracy);
+      }
+    }
+    if (window.userAccuracyCircle && window.userAccuracyCircle !== this.userAccuracyCircle) {
+      window.userAccuracyCircle.setLatLng([lat, lng]);
+      if (typeof accuracy === 'number' && accuracy > 0) {
+        window.userAccuracyCircle.setRadius(accuracy);
+      }
+    }
+
+    // Auto-follow: peta mengikuti pergerakan user secara otomatis (panTo) jika tidak digeser manual
+    if (this.isAutoFollow && this.map) {
+      this.map.panTo([lat, lng], { animate: true });
+    }
+
+    // Sinkronisasi navigasi & jarak rute secara real-time
+    this.updateActiveNavigationProgress(lat, lng);
+  }
+
+  /**
+   * Sinkronisasi jarak real-time & rute aktif menyusuri destinasi (Haversine & auto-arrive)
+   */
+  updateActiveNavigationProgress(lat, lng) {
+    if (!this.activeRoute) return;
+
+    const targetLat = this.activeRoute.targetLat;
+    const targetLng = this.activeRoute.targetLng;
+    const destName = this.activeRoute.destinationName || 'Destinasi';
+
+    // Hitung jarak Haversine (meter)
+    const dLat = (targetLat - lat) * (Math.PI / 180);
+    const dLng = (targetLng - lng) * (Math.PI / 180);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat * (Math.PI / 180)) * Math.cos(targetLat * (Math.PI / 180)) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distMeters = Math.round(6371000 * c);
+
+    // KONDISI TIBA DI TUJUAN: Jarak <= 12 meter
+    if (distMeters <= 12) {
+      console.log(`[NesaMate GPS] Tiba di tujuan: ${destName} (${distMeters} m)`);
+
+      // Bersihkan garis rute aktif & marker tujuan
+      this.clearRoute();
+
+      // Sembunyikan floating banner / card navigasi jika ada di DOM
+      const navCard = document.getElementById('free-nav-active-card');
+      if (navCard) {
+        navCard.classList.remove('is-active');
+      }
+      if (typeof window.setAvatarState === 'function') {
+        window.setAvatarState('full');
+      }
+
+      // Berikan suara sambutan ramah Nesa jika tersedia
+      const arrivalMsg = `Hore! Kamu sudah tiba di ${destName}. Selamat menjelajahi Hutan UNESA!`;
+      if (window.nesaVoice && typeof window.nesaVoice.speak === 'function') {
+        window.nesaVoice.speak(arrivalMsg);
+      }
+
+      if (window.nesaApp && typeof window.nesaApp.showToast === 'function') {
+        window.nesaApp.showToast(`🎉 Tiba di ${destName}!`);
+      }
+      return;
+    }
+
+    // Belum sampai: Perbarui status jarak & waktu estimasi pada activeRoute
+    const estMinutes = Math.max(1, Math.round(distMeters / 70));
+    this.activeRoute.distMeters = distMeters;
+    this.activeRoute.estMinutes = estMinutes;
+    this.activeRoute.start = L.latLng(lat, lng);
+
+    // Perbarui teks jarak pada UI floating card
+    const distEl = document.getElementById('free-nav-dest-distance');
+    if (distEl) {
+      distEl.textContent = `~${distMeters} m (±${estMinutes} mnt)`;
+    }
+
+    // Perbarui titik awal dan koordinat polyline rute secara otomatis
+    const start = L.latLng(lat, lng);
+    const end = L.latLng(targetLat, targetLng);
+    const newWaypoints = this.generateCampusWaypoints(start, end);
+
+    if (Array.isArray(this.routeLayers) && this.routeLayers.length > 0) {
+      this.routeLayers.forEach(layer => {
+        if (layer && typeof layer.setLatLngs === 'function') {
+          layer.setLatLngs(newWaypoints);
+        }
+      });
     }
   }
 
   updateUserPosition(lat, lng) {
-    this.userCoordinates = [lat, lng];
-    if (this.userMarker) {
-      this.userMarker.setLatLng(this.userCoordinates);
-    }
+    this.onLocationUpdate(lat, lng, 10);
   }
 
   recenterUser() {
+    this.isAutoFollow = true;
     if (this.map && this.userCoordinates) {
       this.map.flyTo(this.userCoordinates, 17.5, { duration: 0.8 });
+    }
+  }
+
+  recenterCampus() {
+    this.isAutoFollow = true;
+    if (this.map) {
+      if (this.userCoordinates) {
+        this.map.flyTo(this.userCoordinates, 17.5, { duration: 0.8 });
+      } else {
+        this.map.flyTo(NESA_DATA.campusCenter, NESA_DATA.zoomDefault, { duration: 0.8 });
+      }
     }
   }
 
