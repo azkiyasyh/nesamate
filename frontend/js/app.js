@@ -87,17 +87,21 @@ async function initLive2DAvatar() {
   // Jika sedang proses memuat, tunggu hingga selesai
   if (isModelLoading) return;
 
+  // Resolusi kanvas virtual 1:1 sempurna agar avatar selalu proporsional (anti-penyet)
+  const canvasSize = 400;
+  const targetRenderDim = 385; // Target ukuran proporsional Nesa
+
   // Jika model & pixiApp sudah ada dan terpasang aktif di canvas
   if (pixiApp && nesaModel && pixiApp.view === canvas && canvas.parentElement) {
     try {
-      pixiApp.renderer.resize(260, 260);
+      pixiApp.renderer.resize(canvasSize, canvasSize);
       nesaModel.anchor.set(0.5, 0.5);
-      nesaModel.x = 130;
-      nesaModel.y = 145;
+      nesaModel.x = canvasSize / 2;
+      nesaModel.y = canvasSize / 2 + 10;
       const baseW = nesaModel.internalModel?.originalWidth || nesaModel.width || 400;
       const baseH = nesaModel.internalModel?.originalHeight || nesaModel.height || 400;
-      const scale = Math.min((260 * 0.65) / baseW, (260 * 0.65) / baseH);
-      nesaModel.scale.set(scale);
+      const scale = Math.min(targetRenderDim / baseW, targetRenderDim / baseH);
+      nesaModel.scale.set(scale, scale);
       return;
     } catch (e) {}
   }
@@ -131,8 +135,8 @@ async function initLive2DAvatar() {
       transparent: true,
       autoDensity: true,
       resolution: window.devicePixelRatio || 1,
-      width: 260,
-      height: 260
+      width: canvasSize,
+      height: canvasSize
     });
 
     // 2. Load model Live2D Nesa (dukung path primer & fallback)
@@ -155,19 +159,19 @@ async function initLive2DAvatar() {
     nesaModel = loadedModel;
     pixiApp.stage.addChild(nesaModel);
 
-    // 3. KUNCI POSISI DI TENGAH (Anchor & Alignment)
+    // 3. KUNCI POSISI DI TENGAH (Anchor & Alignment rapi)
     nesaModel.anchor.set(0.5, 0.5);
-    nesaModel.x = 130; // Setengah dari lebar 260px
-    nesaModel.y = 145; // Posisi pas di tengah, tidak melongok close-up
+    nesaModel.x = canvasSize / 2;
+    nesaModel.y = canvasSize / 2 + 10; // Posisi manis tepat di tengah simetris
 
-    // 4. KUNCI SKALA PRESISI (0.65 dari container 260px)
+    // 4. KUNCI SKALA 100% PROPORSIONAL (Skala X dan Y identik sempurna)
     const baseW = nesaModel.internalModel?.originalWidth || nesaModel.width || 400;
     const baseH = nesaModel.internalModel?.originalHeight || nesaModel.height || 400;
     const scale = Math.min(
-      (260 * 0.65) / baseW,
-      (260 * 0.65) / baseH
+      targetRenderDim / baseW,
+      targetRenderDim / baseH
     );
-    nesaModel.scale.set(scale);
+    nesaModel.scale.set(scale, scale);
 
     nesaModel.interactive = true;
     window.nesaModel = nesaModel;
@@ -177,7 +181,7 @@ async function initLive2DAvatar() {
     const existingFallback = document.getElementById('nesa-avatar-fallback');
     if (existingFallback) existingFallback.remove();
 
-    console.log("SUCCESS: Live2D Nesa berhasil dipasang proporsional!");
+    console.log("SUCCESS: Live2D Nesa berhasil dipasang besar dan proporsional simetris!");
   } catch (err) {
     console.error("Gagal load Live2D Nesa:", err);
     // Tampilkan avatar fallback tekstur jika Live2D gagal agar tampilan tidak kosong
@@ -187,8 +191,8 @@ async function initLive2DAvatar() {
         fallbackImg = document.createElement('img');
         fallbackImg.id = 'nesa-avatar-fallback';
         fallbackImg.src = 'assets/live2d/nesa/nesa.2048/texture_00.png';
-        fallbackImg.style.width = '180px';
-        fallbackImg.style.height = '180px';
+        fallbackImg.style.width = '320px';
+        fallbackImg.style.height = '320px';
         fallbackImg.style.objectFit = 'contain';
         fallbackImg.style.pointerEvents = 'none';
         container.appendChild(fallbackImg);
@@ -200,6 +204,21 @@ async function initLive2DAvatar() {
 }
 
 window.initLive2DAvatar = initLive2DAvatar;
+
+// Listener resize window/orientasi layar agar avatar selalu 1:1 proporsional
+window.addEventListener('resize', () => {
+  if (pixiApp && nesaModel) {
+    try {
+      pixiApp.renderer.resize(400, 400);
+      nesaModel.x = 200;
+      nesaModel.y = 210;
+      const baseW = nesaModel.internalModel?.originalWidth || nesaModel.width || 400;
+      const baseH = nesaModel.internalModel?.originalHeight || nesaModel.height || 400;
+      const scale = Math.min(385 / baseW, 385 / baseH);
+      nesaModel.scale.set(scale, scale);
+    } catch (e) {}
+  }
+});
 
 // Jalankan otomatis saat web siap
 if (document.readyState === 'complete' || document.readyState === 'interactive') {

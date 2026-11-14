@@ -113,7 +113,7 @@ body {
    LAYAR 1: LANDING PAGE (ONBOARDING)
    ======================================================== */
 .landing-screen {
-  padding: 48px 24px 36px;
+  padding: 32px 20px 24px;
   justify-content: space-between;
   align-items: center;
   background: linear-gradient(180deg, #F5F0E6 0%, #EDE5D5 100%);
@@ -155,11 +155,11 @@ body {
 #landing-avatar-slot,
 #greeting-avatar-slot {
   width: 100%;
-  min-height: 280px;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 10px auto;
+  margin: 0 auto;
+  flex: 1 1 auto;
 }
 
 .landing-form-box {
@@ -225,7 +225,7 @@ body {
    LAYAR 2: GREETING & PILIH MODE (MAIN ONBOARDING)
    ======================================================== */
 .greeting-screen {
-  padding: 32px 20px 28px;
+  padding: 24px 20px 24px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -277,9 +277,10 @@ body {
    CONTAINER AVATAR LIVE2D NESA (BESAR & TRANSPARAN)
    ======================================================== */
 #nesa-avatar-container {
-  width: 260px !important;
-  height: 260px !important;
-  margin: 10px auto !important;
+  width: min(370px, 86vw) !important;
+  height: min(370px, 86vw) !important;
+  aspect-ratio: 1 / 1 !important;
+  margin: 0 auto !important;
   position: relative !important;
   display: flex !important;
   justify-content: center !important;
@@ -294,6 +295,8 @@ body {
 #canvas-live2d {
   width: 100% !important;
   height: 100% !important;
+  aspect-ratio: 1 / 1 !important;
+  object-fit: contain !important;
   display: block !important;
   pointer-events: none !important;
 }
