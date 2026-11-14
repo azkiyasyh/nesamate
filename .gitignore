@@ -1,15 +1,27 @@
 # Environments & Secrets
 .env
 .env.local
+.env.*
+*.env
+backend/.env
+backend/.env.local
+
+# Virtual Environments
+backend/venv/
 venv/
 env/
 ENV/
+.venv/
 
 # Documentation (local only)
 docs/
 
-# Python cache
+# Python cache & compiled files
 __pycache__/
+*/__pycache__/
+*/*/__pycache__/
+*/*/*/__pycache__/
+*.pyc
 *.py[cod]
 *$py.class
 *.pytest_cache/
@@ -21,9 +33,12 @@ __pycache__/
 chroma_db/
 .chroma/
 
+# Vercel & IDE
+.vercel/
+.vscode/
+
 # Logs & temp
 *.log
 .DS_Store
 Thumbs.db
-.vscode/
 frontend/assets/audio/generated/

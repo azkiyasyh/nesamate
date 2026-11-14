@@ -3,6 +3,14 @@
  * Mengatur alur 5 layar (Landing, Greeting & Mode, Free Mode, Challenge Mode, Jogging Mode)
  */
 
+// ========================================================
+// API CONFIGURATION (Dinamis Lokal vs Vercel Production)
+// ========================================================
+const API_BASE_URL = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
+  ? 'http://127.0.0.1:8000/api'
+  : '/api';
+window.API_BASE_URL = API_BASE_URL;
+
 const CHALLENGE_ROUTE_GUIDES = {
   1: {
     guide: 'Arahkan langkahmu ke area Plaza depan Gedung Rektorat UNESA. Cari tim penjaga yang membawa sensor mikroklimat udara di pelataran utama.',
@@ -355,7 +363,7 @@ class NesaApp {
       localStorage.setItem('nesamate_user_name', val);
 
       // Registrasi sesi ke backend (non-blocking agar transisi lancar)
-      fetch('/api/session', {
+      fetch(`${API_BASE_URL}/session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_name: val })
@@ -744,7 +752,7 @@ class NesaApp {
 
     // Validasi via Backend API jika online
     try {
-      const vRes = await fetch('/api/challenge/validate', {
+      const vRes = await fetch(`${API_BASE_URL}/challenge/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1256,7 +1264,7 @@ class NesaApp {
       const userCoords = nesaMap?.userCoordinates;
       const location = (userCoords && Array.isArray(userCoords)) ? { lat: userCoords[0], lng: userCoords[1] } : null;
 
-      const res = await fetch('/api/chat', {
+      const res = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
