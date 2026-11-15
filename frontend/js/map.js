@@ -43,6 +43,9 @@ class NesaMapManager {
 
     this.routeLayers = [];
     this.destMarker = null;
+    this.walkNodes = null;
+    this.walkAdj = null;
+    this.loadWalkableNetwork();
     this.activeRoute = null;
     this.joggingLine = null;
   }
@@ -640,21 +643,291 @@ class NesaMapManager {
   /**
    * Menghitung jalur lekukan natural pedestrian untuk rute Hutan UNESA
    */
+  haversineMeters(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLng = (lng2 - lng1) * (Math.PI / 180);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  calculateBearing(lat1, lng1, lat2, lng2) {
+    const toRad = d => d * (Math.PI / 180);
+    const toDeg = r => r * (180 / Math.PI);
+    const dLng = toRad(lng2 - lng1);
+    const y = Math.sin(dLng) * Math.cos(toRad(lat2));
+    const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+              Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng);
+    return (toDeg(Math.atan2(y, x)) + 360) % 360;
+  }
+
+  computeTurnHint(waypoints) {
+    if (!Array.isArray(waypoints) || waypoints.length < 3) {
+      return 'Ikuti jalur lurus';
+    }
+    let accDist = 0;
+    for (let i = 1; i < waypoints.length - 1; i++) {
+      const prev = waypoints[i - 1];
+      const curr = waypoints[i];
+      const next = waypoints[i + 1];
+      accDist += this.haversineMeters(prev.lat, prev.lng, curr.lat, curr.lng);
+      if (accDist < 12) continue;
+      const b1 = this.calculateBearing(prev.lat, prev.lng, curr.lat, curr.lng);
+      const b2 = this.calculateBearing(curr.lat, curr.lng, next.lat, next.lng);
+      let diff = ((b2 - b1 + 540) % 360) - 180;
+      if (Math.abs(diff) >= 35) {
+        const arah = diff > 0 ? 'belok kanan' : 'belok kiri';
+        return `Lurus ${Math.round(accDist)}m lalu ${arah}`;
+      }
+    }
+    return 'Lurus mengikuti jalur setapak';
+  }
+
+  async loadWalkableNetwork() {
+    try {
+      const res = await fetch('/assets/walkable_network.json');
+      if (!res.ok) return;
+      const net = await res.json();
+      const nodes = net.nodes || {};
+      const adj = {};
+      (net.ways || []).forEach(way => {
+        const wNodes = way.nodes || [];
+        for (let i = 0; i < wNodes.length - 1; i++) {
+          const u = String(wNodes[i]);
+          const v = String(wNodes[i + 1]);
+          if (!nodes[u] || !nodes[v]) continue;
+          const d = this.haversineMeters(nodes[u].lat, nodes[u].lon, nodes[v].lat, nodes[v].lon);
+          if (!adj[u]) adj[u] = [];
+          if (!adj[v]) adj[v] = [];
+          adj[u].push({ to: v, w: d });
+          adj[v].push({ to: u, w: d });
+        }
+      });
+      this.walkNodes = nodes;
+      this.walkAdj = adj;
+      console.log(`[NesaMate Map] Walkable OSM network loaded: ${Object.keys(adj).length} connected nodes`);
+    } catch (e) {
+      console.warn('[NesaMate Map] Gagal memuat walkable_network.json:', e);
+    }
+  }
+
+  findWalkablePath(start, end) {
+    if (!this.walkNodes || !this.walkAdj) return null;
+    const connectedIds = Object.keys(this.walkAdj);
+    if (connectedIds.length === 0) return null;
+
+    const findNearest = (lat, lng) => {
+      let bestId = null;
+      let bestDist = Infinity;
+      for (const id of connectedIds) {
+        const n = this.walkNodes[id];
+        const d = this.haversineMeters(lat, lng, n.lat, n.lon);
+        if (d < bestDist) {
+          bestDist = d;
+          bestId = id;
+        }
+      }
+      return bestId;
+    };
+
+    const startId = findNearest(start.lat, start.lng);
+    const goalId = findNearest(end.lat, end.lng);
+    if (!startId || !goalId) return null;
+
+    const goalNode = this.walkNodes[goalId];
+    const gScore = { [startId]: 0 };
+    const fScore = { [startId]: this.haversineMeters(this.walkNodes[startId].lat, this.walkNodes[startId].lon, goalNode.lat, goalNode.lon) };
+    const cameFrom = {};
+    const openSet = new Set([startId]);
+    const closedSet = new Set();
+
+    while (openSet.size > 0) {
+      let current = null;
+      let lowestF = Infinity;
+      for (const id of openSet) {
+        const f = fScore[id] ?? Infinity;
+        if (f < lowestF) {
+          lowestF = f;
+          current = id;
+        }
+      }
+      if (!current) break;
+      if (current === goalId) {
+        const path = [];
+        let curr = current;
+        while (curr) {
+          const n = this.walkNodes[curr];
+          path.unshift(L.latLng(n.lat, n.lon));
+          curr = cameFrom[curr];
+        }
+        return [start, ...path, end];
+      }
+      openSet.delete(current);
+      closedSet.add(current);
+
+      for (const edge of (this.walkAdj[current] || [])) {
+        if (closedSet.has(edge.to)) continue;
+        const tentativeG = (gScore[current] ?? Infinity) + edge.w;
+        if (tentativeG < (gScore[edge.to] ?? Infinity)) {
+          cameFrom[edge.to] = current;
+          gScore[edge.to] = tentativeG;
+          const neighbor = this.walkNodes[edge.to];
+          fScore[edge.to] = tentativeG + this.haversineMeters(neighbor.lat, neighbor.lon, goalNode.lat, goalNode.lon);
+          openSet.add(edge.to);
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Menghitung rute jalan kaki mengikuti jaringan jalur setapak & jalan kampus UNESA (A* OSM)
+   */
   generateCampusWaypoints(start, end) {
-    const lat1 = start.lat;
-    const lng1 = start.lng;
-    const lat2 = end.lat;
-    const lng2 = end.lng;
+    const osmPath = this.findWalkablePath(start, end);
+    if (osmPath && osmPath.length >= 2) {
+      return osmPath;
+    }
+    const nodes = {
+      east_entry: [-7.3002, 112.6738],
+      east_road: [-7.3005, 112.6726],
+      south_east: [-7.30168, 112.67238],
+      park_se_corner: [-7.30165, 112.67210],
+      flora: [-7.30143, 112.67172],
+      ayam: [-7.30112, 112.67134],
+      tugu_bend: [-7.30092, 112.67106],
+      tugu: [-7.30085, 112.67096],
+      pond_east: [-7.30063, 112.67098],
+      rusa: [-7.300756, 112.670951],
+      penangkaran: [-7.300416, 112.670883],
+      angsa: [-7.300517, 112.670652],
+      merak: [-7.300464, 112.670441],
+      merpati: [-7.300471, 112.670307],
+      bugar: [-7.300548, 112.670248],
+      danau_kecil: [-7.300733, 112.670126],
+      gazebo1: [-7.300744, 112.671448],
+      gazebo2: [-7.30044, 112.671475],
+      setapak_utara: [-7.30017, 112.671744],
+      danau_bunga: [-7.300294, 112.671901],
+      shelter_selatan: [-7.3018, 112.6726],
+      arboretum: [-7.3028, 112.6738],
+      gelora: [-7.2988, 112.6720],
+      tpst: [-7.302821, 112.668399]
+    };
 
-    // Titik tengah dengan offset alami lekukan koridor kanopi pohon
-    const dLat = lat2 - lat1;
-    const dLng = lng2 - lng1;
+    const edges = [
+      ['east_entry', 'east_road'],
+      ['east_road', 'danau_bunga'],
+      ['danau_bunga', 'setapak_utara'],
+      ['setapak_utara', 'gazebo2'],
+      ['gazebo2', 'gazebo1'],
+      ['gazebo1', 'ayam'],
+      ['gazebo2', 'penangkaran'],
+      ['penangkaran', 'angsa'],
+      ['angsa', 'merak'],
+      ['merak', 'merpati'],
+      ['merpati', 'bugar'],
+      ['bugar', 'danau_kecil'],
+      ['east_road', 'south_east'],
+      ['south_east', 'park_se_corner'],
+      ['park_se_corner', 'flora'],
+      ['flora', 'ayam'],
+      ['ayam', 'tugu_bend'],
+      ['tugu_bend', 'tugu'],
+      ['tugu', 'pond_east'],
+      ['pond_east', 'rusa'],
+      ['pond_east', 'penangkaran'],
+      ['rusa', 'danau_kecil'],
+      ['south_east', 'shelter_selatan'],
+      ['shelter_selatan', 'arboretum'],
+      ['east_entry', 'gelora'],
+      ['gelora', 'setapak_utara'],
+      ['danau_kecil', 'tpst']
+    ];
 
-    // Tambahkan 2 waypoints belokan halus pedestrian
-    const p1 = L.latLng(lat1 + dLat * 0.35 + 0.00012, lng1 + dLng * 0.3 - 0.0001);
-    const p2 = L.latLng(lat1 + dLat * 0.7 - 0.00008, lng1 + dLng * 0.75 + 0.00012);
+    const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
-    return [start, p1, p2, end];
+    // Bangun adjacency list
+    const adj = {};
+    Object.keys(nodes).forEach(k => { adj[k] = []; });
+    edges.forEach(([u, v]) => {
+      const w = dist(nodes[u], nodes[v]);
+      adj[u].push({ to: v, w });
+      adj[v].push({ to: u, w });
+    });
+
+    const startArr = [start.lat, start.lng];
+    const endArr = [end.lat, end.lng];
+
+    // Jika sangat dekat (< 35m), hubungkan langsung
+    if (dist(startArr, endArr) < 0.00032) {
+      return [start, end];
+    }
+
+    const findNearestNode = (pt) => {
+      let best = null;
+      let bestD = Infinity;
+      for (const [k, coords] of Object.entries(nodes)) {
+        const d = dist(pt, coords);
+        if (d < bestD) {
+          bestD = d;
+          best = k;
+        }
+      }
+      return best;
+    };
+
+    const startNode = findNearestNode(startArr);
+    const endNode = findNearestNode(endArr);
+
+    // Dijkstra shortest path
+    const dMap = {};
+    const prev = {};
+    const visited = new Set();
+    Object.keys(nodes).forEach(k => { dMap[k] = Infinity; });
+    dMap[startNode] = 0;
+
+    while (visited.size < Object.keys(nodes).length) {
+      let curr = null;
+      let currD = Infinity;
+      for (const k of Object.keys(nodes)) {
+        if (!visited.has(k) && dMap[k] < currD) {
+          currD = dMap[k];
+          curr = k;
+        }
+      }
+      if (!curr || curr === endNode) break;
+      visited.add(curr);
+      for (const edge of adj[curr]) {
+        const nd = currD + edge.w;
+        if (nd < dMap[edge.to]) {
+          dMap[edge.to] = nd;
+          prev[edge.to] = curr;
+        }
+      }
+    }
+
+    const pathNodes = [];
+    let trace = endNode;
+    while (trace) {
+      pathNodes.unshift(L.latLng(nodes[trace][0], nodes[trace][1]));
+      if (trace === startNode) break;
+      trace = prev[trace];
+    }
+
+    const waypoints = [start];
+    pathNodes.forEach(pt => {
+      const last = waypoints[waypoints.length - 1];
+      if (last.distanceTo(pt) > 8) {
+        waypoints.push(pt);
+      }
+    });
+    if (waypoints[waypoints.length - 1].distanceTo(end) > 5) {
+      waypoints.push(end);
+    }
+    return waypoints;
   }
 
   /**
@@ -671,6 +944,9 @@ class NesaMapManager {
     }
 
     this.clearRoute();
+    if (this.map) {
+      this.map.closePopup();
+    }
 
     const start = L.latLng(this.userCoordinates[0], this.userCoordinates[1]);
     const end = L.latLng(targetLat, targetLng);
@@ -685,37 +961,63 @@ class NesaMapManager {
     const distMeters = Math.round(6371000 * c);
     const estMinutes = Math.max(1, Math.round(distMeters / 70)); // Estimasi jalan kaki santai 70m/menit
 
-    const waypoints = this.generateCampusWaypoints(start, end);
+    let polylineLayers = [];
+    const renderWaypoints = (waypoints) => {
+      if (!this.map) return;
+      polylineLayers.forEach(layer => {
+        try { this.map.removeLayer(layer); } catch (e) {}
+      });
+      polylineLayers = [];
 
-    // 1. Lapisan Glow Luar (Ambient Safari Trail)
-    const glowPoly = L.polyline(waypoints, {
-      color: '#1E3B2F',
-      weight: 12,
-      opacity: 0.22,
-      lineCap: 'round',
-      lineJoin: 'round'
-    }).addTo(this.map);
-    this.routeLayers.push(glowPoly);
+      // 1. Lapisan Glow Luar (Ambient Safari Trail)
+      const glowPoly = L.polyline(waypoints, {
+        color: '#1E3B2F',
+        weight: 12,
+        opacity: 0.22,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(this.map);
+      polylineLayers.push(glowPoly);
+      this.routeLayers.push(glowPoly);
 
-    // 2. Lapisan Jalur Utama (Dark Forest Solid)
-    const mainPoly = L.polyline(waypoints, {
-      color: '#1E3B2F',
-      weight: 6,
-      opacity: 0.95,
-      lineCap: 'round',
-      lineJoin: 'round'
-    }).addTo(this.map);
-    this.routeLayers.push(mainPoly);
+      // 2. Lapisan Jalur Utama (Dark Forest Solid)
+      const mainPoly = L.polyline(waypoints, {
+        color: '#1E3B2F',
+        weight: 6,
+        opacity: 0.95,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(this.map);
+      polylineLayers.push(mainPoly);
+      this.routeLayers.push(mainPoly);
 
-    // 3. Lapisan Garis Panduan Aksen Putus-Putus Emas (Pulsing Gold Trail)
-    const dashPoly = L.polyline(waypoints, {
-      color: '#C8B48A',
-      weight: 3,
-      opacity: 0.98,
-      dashArray: '8, 8',
-      lineCap: 'round'
-    }).addTo(this.map);
-    this.routeLayers.push(dashPoly);
+      // 3. Lapisan Garis Panduan Aksen Putus-Putus Emas (Pulsing Gold Trail)
+      const dashPoly = L.polyline(waypoints, {
+        color: '#C8B48A',
+        weight: 3,
+        opacity: 0.98,
+        dashArray: '8, 8',
+        lineCap: 'round'
+      }).addTo(this.map);
+      polylineLayers.push(dashPoly);
+      this.routeLayers.push(dashPoly);
+
+      this.map.fitBounds(mainPoly.getBounds(), { padding: [70, 70], maxZoom: 18 });
+    };
+
+    const routeWaypoints = this.generateCampusWaypoints(start, end);
+    renderWaypoints(routeWaypoints);
+
+    let pathDist = 0;
+    for (let i = 0; i < routeWaypoints.length - 1; i++) {
+      pathDist += this.haversineMeters(
+        routeWaypoints[i].lat, routeWaypoints[i].lng,
+        routeWaypoints[i + 1].lat, routeWaypoints[i + 1].lng
+      );
+    }
+    const finalDistMeters = Math.max(distMeters, Math.round(pathDist));
+    const finalEstMinutes = Math.max(1, Math.round(finalDistMeters / 70));
+    const turnHint = this.computeTurnHint(routeWaypoints);
 
     // 4. Marker Destinasi Khusus Navigasi (Pin Bendera Safari)
     const destIcon = L.divIcon({
@@ -737,8 +1039,9 @@ class NesaMapManager {
       targetLat,
       targetLng,
       destinationName,
-      distMeters,
-      estMinutes
+      distMeters: finalDistMeters,
+      estMinutes: finalEstMinutes,
+      turnHint
     };
 
     // Fit view peta secara proporsional dengan padding asimetris
@@ -757,6 +1060,7 @@ class NesaMapManager {
    * Hapus garis rute aktif dan marker tujuan
    */
   clearRoute() {
+    this.pendingRoute = null;
     this.routeLayers.forEach(layer => {
       try { this.map.removeLayer(layer); } catch (e) {}
     });

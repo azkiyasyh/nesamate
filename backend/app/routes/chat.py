@@ -1,7 +1,9 @@
+import json
 import time
 import uuid
 from typing import Dict, List
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import StreamingResponse
 
 from backend.app.models.schemas import (
     SessionCreateRequest,
@@ -137,6 +139,13 @@ def handle_chat(req: ChatRequest):
         history_block=history_block
     )
     llm_ms = round((time.time() - t_llm_0) * 1000, 1)
+    action_payload = result.get("action_payload") or {}
+    print(
+        f"[CHAT ACTION] query={req.message[:120]!r} "
+        f"action={result['action']!r} "
+        f"spot_id={action_payload.get('spot_id')!r}",
+        flush=True
+    )
 
     # Simpan giliran ke riwayat sesi
     if session:
@@ -167,6 +176,82 @@ def handle_chat(req: ChatRequest):
         audio_url=audio_url,
         benchmarks=benchmarks
     )
+
+
+@router.post("/chat/stream")
+def handle_chat_stream(req: ChatRequest):
+    """Streaming SSE endpoint agar teks Nesa muncul kata demi kata secara real-time."""
+    _cleanup_expired_sessions()
+    _check_rate_limit(req.session_id)
+
+    session = ACTIVE_SESSIONS.get(req.session_id)
+    if session:
+        session["last_active"] = time.time()
+        if req.mode != "none":
+            session["mode"] = req.mode
+        user_name = session["user_name"]
+    else:
+        user_name = "Teman"
+
+    lat = req.location.lat if req.location else None
+    lng = req.location.lng if req.location else None
+    t_start = time.time()
+
+    t_rag_0 = time.time()
+    loc_block, ctx_block = rag_service.retrieve_context(query=req.message, user_lat=lat, user_lng=lng)
+    rag_ms = round((time.time() - t_rag_0) * 1000, 1)
+
+    progress_data = challenge_service.get_progress(req.session_id)
+    progress_info = f"{progress_data['progress']}/{progress_data['total_posts']} pos selesai"
+
+    history = session.setdefault("history", []) if session else []
+    history_lines = []
+    for h in history[-6:]:
+        prefix = "Pengguna" if h["role"] == "user" else "Nesa"
+        history_lines.append(f"{prefix}: {h['text']}")
+    history_block = "<riwayat>\n" + ("\n".join(history_lines) if history_lines else "belum ada percakapan sebelumnya") + "\n</riwayat>"
+
+    def event_generator():
+        t_llm_0 = time.time()
+        for event in gemini_service.generate_response_stream(
+            user_name=user_name,
+            user_message=req.message,
+            location_block=loc_block,
+            context_block=ctx_block,
+            mode=req.mode,
+            progress_info=progress_info,
+            history_block=history_block
+        ):
+            if event["type"] == "chunk":
+                yield f"data: {json.dumps(event)}\n\n"
+            elif event["type"] == "done":
+                result = event["data"]
+                llm_ms = round((time.time() - t_llm_0) * 1000, 1)
+                total_ms = round((time.time() - t_start) * 1000, 1)
+                if session:
+                    history.append({"role": "user", "text": req.message})
+                    history.append({"role": "nesa", "text": result["speech"]})
+                    if len(history) > 10:
+                        session["history"] = history[-10:]
+                payload = {
+                    "type": "done",
+                    "data": {
+                        "speech": result["speech"],
+                        "emotion": result["emotion"],
+                        "action": result["action"],
+                        "action_payload": result["action_payload"],
+                        "audio_url": None,
+                        "benchmarks": {
+                            "rag_ms": rag_ms,
+                            "llm_ms": llm_ms,
+                            "tts_ms": 0.0,
+                            "total_ms": total_ms
+                        }
+                    }
+                }
+                yield f"data: {json.dumps(payload)}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @router.post("/tts", response_model=TTSResponse)

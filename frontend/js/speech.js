@@ -183,17 +183,67 @@ class NesaVoiceAssistant {
       }
     }, estimatedSec * 1000);
 
-    try {
-      this.synth.speak(utterance);
-    } catch (err) {
-      console.warn('[NesaMate Voice] Gagal speak:', err);
-      finishSpeech();
-    }
+    const speakWithBrowser = (reason = '') => {
+      if (reason) console.warn('[NesaMate Voice] Fallback ke suara Chrome:', reason);
+      try {
+        this.synth.speak(utterance);
+      } catch (err) {
+        console.warn('[NesaMate Voice] Gagal speak:', err);
+        finishSpeech();
+      }
+    };
+
+    this.isSpeaking = true;
+    console.log('[NesaMate Voice] Meminta audio TTS ke /api/tts...');
+    fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: cleanText })
+    })
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        console.log('[NesaMate Voice] Respons /api/tts:', data);
+        if (data && data.audio_url) {
+          const audio = new Audio(data.audio_url);
+          this.currentAudio = audio;
+          audio.onplay = () => {
+            console.log('[NesaMate Voice] Memutar audio server:', data.audio_url);
+            this.isSpeaking = true;
+            startLipSync();
+            if (this.onSpeakingStateChange) this.onSpeakingStateChange(true);
+            if (onStartCallback) onStartCallback();
+          };
+          audio.onended = () => {
+            this.currentAudio = null;
+            finishSpeech();
+          };
+          audio.onerror = (e) => {
+            this.currentAudio = null;
+            speakWithBrowser('Audio element error');
+          };
+          audio.play().catch((err) => {
+            this.currentAudio = null;
+            speakWithBrowser(`audio.play() diblokir/gagal: ${err.message}`);
+          });
+        } else {
+          speakWithBrowser('audio_url kosong dari /api/tts');
+        }
+      })
+      .catch((err) => {
+        speakWithBrowser(`Fetch /api/tts error: ${err.message}`);
+      });
   }
 
   stopSpeaking() {
     this.clearSpeakingWatchdog();
     stopLipSync();
+    if (this.currentAudio) {
+      try {
+        this.currentAudio.pause();
+        this.currentAudio.currentTime = 0;
+      } catch (e) {}
+      this.currentAudio = null;
+    }
     if (this.synth && this.synth.speaking) {
       try {
         this.synth.cancel();

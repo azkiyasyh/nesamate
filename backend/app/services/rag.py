@@ -128,13 +128,27 @@ class RAGService:
             location_block = "<lokasi>\ntidak tersedia\n</lokasi>"
 
         # 2. Ranking dokumen dengan BM25/keyword scoring sederhana
-        q_tokens = set(query.lower().split())
+        import re
+        stopwords = {
+            "apa", "aja", "saja", "yg", "yang", "ada", "di", "ke", "dari",
+            "ini", "itu", "dan", "atau", "unesa", "hutan", "buat", "untuk",
+            "gimana", "bagaimana", "cara", "bikin", "membuat", "kenapa",
+            "mengapa", "siapa", "kapan", "tolong", "coba", "dong", "nih", "ya"
+        }
+        raw_tokens = re.findall(r"[a-z0-9]+", query.lower())
+        q_tokens = {t for t in raw_tokens if t not in stopwords and len(t) > 1}
+        if not q_tokens:
+            q_tokens = set(raw_tokens)
+
+        asks_fauna = any(k in raw_tokens for k in ("hewan", "satwa", "binatang", "fauna"))
         scored: List[Tuple[float, Dict[str, Any]]] = []
 
         for doc in self.docs:
             d_text = doc["text"].lower()
             # Hitung frekuensi kata query yang cocok
             matches = sum(1 for t in q_tokens if t in d_text)
+            if asks_fauna and doc.get("type") == "fauna":
+                matches += 3
             if matches > 0:
                 scored.append((matches, doc))
 

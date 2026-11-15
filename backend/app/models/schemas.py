@@ -37,6 +37,7 @@ class ChatResponse(BaseModel):
         "none",
         "show_map",
         "show_spot_detail",
+        "navigate_to_spot",
         "show_chart",
         "start_challenge",
         "open_free_mode"

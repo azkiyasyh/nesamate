@@ -233,6 +233,7 @@ class NesaApp {
     this.sessionId = localStorage.getItem('nesamate_session_id') || '';
     this.currentScreen = 'screen-landing';
     this.activeMapMode = null; // 'free' | 'challenge' | 'jogging'
+    this.routeRequestId = 0;
 
     // Challenge Mode State
     this.challengeState = {
@@ -1069,7 +1070,8 @@ class NesaApp {
     if (navCard && titleEl) {
       titleEl.textContent = name;
       if (distEl && activeRoute) {
-        distEl.textContent = `~${activeRoute.distMeters || 120} m (±${activeRoute.estMinutes || 2} mnt)`;
+        const hint = activeRoute.turnHint ? ` • ${activeRoute.turnHint}` : '';
+        distEl.textContent = `~${activeRoute.distMeters || 120} m (±${activeRoute.estMinutes || 2} mnt)${hint}`;
       }
       navCard.classList.add('is-active');
     }
@@ -1079,6 +1081,8 @@ class NesaApp {
    * Navigasi langsung ke titik POI di peta
    */
   routeToPoint(lat, lng, name, shouldSpeak = true) {
+    const requestId = ++this.routeRequestId;
+
     if (this.currentScreen !== 'screen-free-mode') {
       this.showScreen('screen-free-mode');
     }
@@ -1087,6 +1091,7 @@ class NesaApp {
     this.closeDrawer();
 
     const executeRoute = () => {
+      if (requestId !== this.routeRequestId) return;
       if (window.nesaMap) {
         if (!window.nesaMap.map || window.nesaMap.currentContainerId !== 'free-map-container') {
           window.nesaMap.initMap('free-map-container');
@@ -1220,9 +1225,15 @@ class NesaApp {
       }
     }
 
+    // Jika pertanyaan bersifat edukasi/definisi (mis. "apa itu rusa"), langsung kirim ke AI
+    const isDefinitionQuery = /\b(apa itu|apakah|jelaskan|ceritakan|tentang|kenapa|mengapa|siapa)\b/.test(text);
+    if (isDefinitionQuery) {
+      this.askNesaAI(transcript);
+      return;
+    }
+
     if (targetAnimalSpot) {
-      this.routeToPoint(targetAnimalSpot.lat, targetAnimalSpot.lng, targetAnimalSpot.name, false);
-      this.highlightSpotById(targetAnimalSpot.id, false);
+      this.highlightSpotById(targetAnimalSpot.id, true);
       reply = `Rute menuju ${targetAnimalSpot.name} telah ditampilkan di peta. Silakan ikuti garis panduannya.`;
       if (bubble) bubble.textContent = `Nesa: "${reply}"`;
       nesaVoice.speak(reply);
@@ -1232,28 +1243,23 @@ class NesaApp {
     // Pencarian Fasilitas Kampus & Hutan UNESA
     if (text.includes('musholla') || text.includes('masjid') || text.includes('sholat')) {
       const item = NESA_DATA.poi.musholla[0];
-      this.routeToPoint(item.lat, item.lng, item.name, false);
-      this.highlightSpotById(item.id, false);
+      this.highlightSpotById(item.id, true);
       reply = `Aku telah menunjukkan rute ke ${item.name} di peta.`;
     } else if (text.includes('toilet') || text.includes('kamar mandi') || text.includes('wc')) {
       const item = NESA_DATA.poi.toilet[0];
-      this.routeToPoint(item.lat, item.lng, item.name, false);
-      this.highlightSpotById(item.id, false);
+      this.highlightSpotById(item.id, true);
       reply = `Toilet terdekat ada di ${item.name}. Rutenya sudah tampil di peta!`;
     } else if (text.includes('parkir') || text.includes('motor') || text.includes('mobil')) {
       const item = NESA_DATA.poi.parkiran[0];
-      this.routeToPoint(item.lat, item.lng, item.name, false);
-      this.highlightSpotById(item.id, false);
+      this.highlightSpotById(item.id, true);
       reply = `Lokasi ${item.name} telah dipetakan untukmu.`;
     } else if (text.includes('hutan') || text.includes('trekking') || text.includes('pohon')) {
       const item = NESA_DATA.poi.hutan[0];
-      this.routeToPoint(item.lat, item.lng, item.name, false);
-      this.highlightSpotById(item.id, false);
+      this.highlightSpotById(item.id, true);
       reply = `Menuju ke ${item.name}. Nikmati kesegaran udara kanopi Hutan UNESA!`;
     } else if (text.includes('gerbang') || text.includes('pintu masuk') || text.includes('gate')) {
       const item = NESA_DATA.poi.gerbang[0];
-      this.routeToPoint(item.lat, item.lng, item.name, false);
-      this.highlightSpotById(item.id, false);
+      this.highlightSpotById(item.id, true);
       reply = `Menampilkan rute ke ${item.name}. Selamat datang di kampus UNESA!`;
     } else {
       // Pertanyaan edukasi/flora/fauna/arah dialirkan ke Gemini AI via backend
@@ -1283,7 +1289,7 @@ class NesaApp {
       const userCoords = nesaMap?.userCoordinates;
       const location = (userCoords && Array.isArray(userCoords)) ? { lat: userCoords[0], lng: userCoords[1] } : null;
 
-      const res = await fetch(`${API_BASE_URL}/chat`, {
+      const res = await fetch(`${API_BASE_URL}/chat/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1295,7 +1301,32 @@ class NesaApp {
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      let data = null;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const evt = JSON.parse(line.slice(6));
+            if (evt.type === 'chunk' && evt.speech && bubble) {
+              bubble.textContent = `Nesa: "${evt.speech}"`;
+            } else if (evt.type === 'done') {
+              data = evt.data;
+            }
+          } catch (e) {}
+        }
+      }
+
+      if (!data) throw new Error('Stream selesai tanpa payload final');
 
       // Debug Benchmark Latency Display
       if (data.benchmarks) {
@@ -1314,6 +1345,13 @@ class NesaApp {
       }
 
       const reply = data.speech || 'Halo, ada yang ingin kamu tanyakan tentang Hutan UNESA?';
+      console.log('[NesaMate AI] Response action:', {
+        query,
+        speech: reply,
+        action: data.action || 'none',
+        actionPayload: data.action_payload || {},
+        routeRequested: data.action === 'navigate_to_spot'
+      });
       if (bubble) {
         bubble.textContent = `Nesa: "${reply}"`;
       }
@@ -1326,7 +1364,10 @@ class NesaApp {
         if (this.currentScreen !== 'screen-challenge-mode') this.showScreen('screen-challenge-mode');
       } else if (data.action === 'show_spot_detail' && data.action_payload && data.action_payload.spot_id) {
         if (this.currentScreen !== 'screen-free-mode') this.showScreen('screen-free-mode');
-        this.highlightSpotById(data.action_payload.spot_id);
+        this.highlightSpotById(data.action_payload.spot_id, false);
+      } else if (data.action === 'navigate_to_spot' && data.action_payload && data.action_payload.spot_id) {
+        if (this.currentScreen !== 'screen-free-mode') this.showScreen('screen-free-mode');
+        this.highlightSpotById(data.action_payload.spot_id, true);
       } else if (['show_chart', 'show_data_panel', 'show_image', 'show_visual'].includes(data.action)) {
         this.setAvatarState('compact');
       }
@@ -1353,16 +1394,30 @@ class NesaApp {
     }
     this.closeDrawer();
 
+    if (!drawRoute && window.nesaMap) {
+      this.routeRequestId += 1;
+      window.nesaMap.clearRoute();
+      const navCard = document.getElementById('free-nav-active-card');
+      if (navCard) navCard.classList.remove('is-active');
+    }
+
     const spot = window.nesaMap ? window.nesaMap.findSpotAnywhere(cleanId) : null;
+    console.log('[NesaMate AI] Spot detail:', {
+      spotId: cleanId,
+      drawRoute,
+      spotFound: Boolean(spot)
+    });
     if (spot && drawRoute) {
       this.routeToPoint(spot.lat, spot.lng, spot.name, false);
     }
 
-    setTimeout(() => {
-      if (window.nesaMap) {
-        window.nesaMap.highlightSpot(cleanId);
-      }
-    }, 350);
+    if (!drawRoute) {
+      setTimeout(() => {
+        if (window.nesaMap) {
+          window.nesaMap.highlightSpot(cleanId);
+        }
+      }, 350);
+    }
   }
 
   /**

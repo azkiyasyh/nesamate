@@ -19,7 +19,7 @@ if not PROMPT_FILE.exists():
 class GeminiService:
     def __init__(self):
         self.api_key = os.getenv("GEMINI_API_KEY", "").strip()
-        self.model_name = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+        self.model_name = os.getenv("GEMINI_MODEL", "gemini-3.8-flash-lite")
         self._load_system_prompt()
         self.client = None
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
@@ -86,40 +86,182 @@ class GeminiService:
             f"<pesan_pengguna>\n{clean_input}\n</pesan_pengguna>\n"
         )
 
-        def _call_gemini():
-            return self.client.models.generate_content(
-                model=self.model_name,
-                contents=full_prompt,
-                config={
-                    "response_mime_type": "application/json",
-                    "temperature": 0.4,
-                    "max_output_tokens": 1024,
-                }
-            )
+        candidate_models = []
+        for m in (self.model_name, "gemini-3.1-flash-lite", "gemini-flash-lite-latest"):
+            if m and m not in candidate_models:
+                candidate_models.append(m)
 
-        try:
-            future = self.executor.submit(_call_gemini)
-            response = future.result(timeout=20.0)
-            text = response.text.strip()
-            return self._parse_json_response(text, user_name)
-        except Exception as err:
-            err_msg = repr(err) if not str(err) else str(err)
-            print(f"[GeminiService] Fallback aktif (Gemini error: {err_msg})")
-            return self._smart_fallback(user_name, clean_input, location_block, context_block, mode)
+        import time
+        deadline = time.time() + 5.0
+        last_err = None
+        for model_id in candidate_models:
+            remaining = deadline - time.time()
+            if remaining <= 0.1:
+                break
+
+            def _call_gemini(target_model=model_id):
+                return self.client.models.generate_content(
+                    model=target_model,
+                    contents=full_prompt,
+                    config={
+                        "response_mime_type": "application/json",
+                        "temperature": 0.4,
+                        "max_output_tokens": 1024,
+                    }
+                )
+
+            try:
+                future = self.executor.submit(_call_gemini)
+                response = future.result(timeout=remaining)
+                text = response.text.strip()
+                if model_id != self.model_name:
+                    print(f"[GeminiService] Berhasil memakai model cadangan: {model_id}", flush=True)
+                return self._parse_json_response(text, user_name, clean_input)
+            except Exception as err:
+                last_err = err
+                err_msg = repr(err) if not str(err) else str(err)
+                print(f"[GeminiService] Model {model_id} gagal ({err_msg}), mencoba cadangan berikutnya...", flush=True)
+
+        print(f"[GeminiService] Semua model gagal, fallback lokal aktif (last error: {last_err})")
+        return self._smart_fallback(user_name, clean_input, location_block, context_block, mode)
+
+    def generate_response_stream(
+        self,
+        user_name: str,
+        user_message: str,
+        location_block: str,
+        context_block: str,
+        mode: str = "none",
+        progress_info: str = "0/6 pos selesai",
+        history_block: str = "<riwayat>\nbelum ada percakapan\n</riwayat>"
+    ):
+        """
+        Streaming generator yang mengirim potongan teks 'speech' secara real-time,
+        lalu mengirim event 'done' berisi payload JSON lengkap.
+        """
+        import time
+        self._load_system_prompt()
+        clean_input = (user_message or "").strip()[:300]
+
+        if os.getenv("ENVIRONMENT") == "test" or os.getenv("TESTING") == "1" or not self.client:
+            yield {"type": "done", "data": self._smart_fallback(user_name, clean_input, location_block, context_block, mode)}
+            return
+
+        system_prompt = self.system_prompt_template.replace("{{nama}}", user_name)
+        session_block = (
+            f"<sesi>\n"
+            f"nama: {user_name}\n"
+            f"mode: {mode}\n"
+            f"progress: {progress_info}\n"
+            f"</sesi>"
+        )
+        full_prompt = (
+            f"{system_prompt}\n\n"
+            f"{session_block}\n"
+            f"{history_block}\n"
+            f"{location_block}\n"
+            f"{context_block}\n"
+            f"<pesan_pengguna>\n{clean_input}\n</pesan_pengguna>\n"
+        )
+
+        candidate_models = []
+        for m in (self.model_name, "gemini-3.1-flash-lite", "gemini-flash-lite-latest"):
+            if m and m not in candidate_models:
+                candidate_models.append(m)
+
+        deadline = time.time() + 5.0
+        for model_id in candidate_models:
+            if deadline - time.time() <= 0.1:
+                break
+            try:
+                raw_buf = ""
+                last_sent_speech = ""
+                stream = self.client.models.generate_content_stream(
+                    model=model_id,
+                    contents=full_prompt,
+                    config={
+                        "response_mime_type": "application/json",
+                        "temperature": 0.4,
+                        "max_output_tokens": 512,
+                    }
+                )
+                for chunk in stream:
+                    if time.time() > deadline and not raw_buf:
+                        raise TimeoutError("Stream deadline exceeded")
+                    if getattr(chunk, "text", None):
+                        raw_buf += chunk.text
+                        m_speech = re.search(r'"speech"\s*:\s*"((?:[^"\\]|\\.)*)', raw_buf)
+                        if m_speech:
+                            partial = m_speech.group(1).replace('\\"', '"').replace("\\n", " ")
+                            if len(partial) > len(last_sent_speech):
+                                last_sent_speech = partial
+                                yield {"type": "chunk", "speech": partial}
+
+                parsed = self._parse_json_response(raw_buf.strip(), user_name, clean_input)
+                yield {"type": "done", "data": parsed}
+                return
+            except Exception as err:
+                err_msg = repr(err) if not str(err) else str(err)
+                print(f"[GeminiService] Stream {model_id} gagal ({err_msg})", flush=True)
+
+        yield {"type": "done", "data": self._smart_fallback(user_name, clean_input, location_block, context_block, mode)}
 
     def generate_speech_audio(self, text: str) -> Optional[str]:
         """
-        Generate audio WAV dengan suara Kore (gemini-2.5-flash-preview-tts)
-        dan simpan ke frontend/assets/audio/generated/.
-        Memakai cache MD5 agar frasa yang sama langsung dimuat 0ms.
+        Generate audio TTS via ElevenLabs (jika ELEVENLABS_API_KEY tersedia),
+        dengan cache MD5 di frontend/assets/audio/generated/.
         """
         if os.getenv("ENVIRONMENT") == "test" or os.getenv("TESTING") == "1":
             return None
-        if not self.client or not text:
+        if not text:
             return None
 
         clean_text = text.strip()
         if not clean_text:
+            return None
+
+        eleven_key = os.getenv("ELEVENLABS_API_KEY", "").strip()
+        if eleven_key:
+            try:
+                import hashlib
+                import urllib.request
+
+                voice_id = os.getenv("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM").strip()
+                model_id = os.getenv("ELEVENLABS_MODEL_ID", "eleven_flash_v2_5").strip()
+                text_hash = hashlib.md5(f"{voice_id}:{model_id}:{clean_text}".encode("utf-8")).hexdigest()[:16]
+                filename = f"nesa_11labs_{text_hash}.mp3"
+                out_dir = BASE_DIR.parent / "frontend" / "assets" / "audio" / "generated"
+                out_dir.mkdir(parents=True, exist_ok=True)
+                file_path = out_dir / filename
+
+                if file_path.exists():
+                    return f"/assets/audio/generated/{filename}"
+
+                url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+                payload = json.dumps({
+                    "text": clean_text,
+                    "model_id": model_id,
+                    "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}
+                }).encode("utf-8")
+                req = urllib.request.Request(
+                    url,
+                    data=payload,
+                    headers={
+                        "xi-api-key": eleven_key,
+                        "Content-Type": "application/json",
+                        "Accept": "audio/mpeg"
+                    },
+                    method="POST"
+                )
+                with urllib.request.urlopen(req, timeout=20.0) as resp:
+                    audio_bytes = resp.read()
+                if audio_bytes:
+                    file_path.write_bytes(audio_bytes)
+                    return f"/assets/audio/generated/{filename}"
+            except Exception as e:
+                print(f"[GeminiService] ElevenLabs TTS gagal: {e}", flush=True)
+
+        if not self.client:
             return None
 
         try:
@@ -166,18 +308,22 @@ class GeminiService:
                 import edge_tts
                 mp3_filename = f"nesa_fallback_{text_hash}.mp3"
                 mp3_path = out_dir / mp3_filename
-                if not mp3_path.exists():
+                if not mp3_path.exists() or mp3_path.stat().st_size < 100:
                     async def _run_edge():
                         comm = edge_tts.Communicate(clean_text, "id-ID-GadisNeural", rate="+6%", pitch="+6Hz")
                         await comm.save(str(mp3_path))
                     asyncio.run(_run_edge())
-                return f"/assets/audio/generated/{mp3_filename}"
+                if mp3_path.exists() and mp3_path.stat().st_size >= 100:
+                    return f"/assets/audio/generated/{mp3_filename}"
+                if mp3_path.exists():
+                    mp3_path.unlink(missing_ok=True)
+                return None
             except Exception as e2:
                 print(f"[EdgeTTS] Error fallback: {e2}")
                 return None
         return None
 
-    def _parse_json_response(self, text: str, user_name: str) -> Dict[str, Any]:
+    def _parse_json_response(self, text: str, user_name: str, query: str = "") -> Dict[str, Any]:
         """Validasi dan sanitasi output JSON sesuai PRD 12.6."""
         # Bersihkan markdown formatting jika masih ada ```json
         cleaned = re.sub(r"^```json\s*", "", text, flags=re.MULTILINE)
@@ -195,11 +341,16 @@ class GeminiService:
 
             action = data.get("action", "none")
             valid_actions = [
-                "none", "show_map", "show_spot_detail", "show_chart",
+                "none", "show_map", "show_spot_detail", "navigate_to_spot", "show_chart",
                 "start_challenge", "open_free_mode"
             ]
             if action not in valid_actions:
                 action = "none"
+            elif self._is_route_query(query):
+                if action == "show_spot_detail":
+                    action = "navigate_to_spot"
+            elif action == "navigate_to_spot":
+                action = "show_spot_detail"
 
             return {
                 "speech": speech,
@@ -229,33 +380,52 @@ class GeminiService:
         Jawaban netral, lugas, akurat, dan tanpa repetisi template.
         """
         q = query.lower()
+        wants_route = self._is_route_query(q)
 
         # 1. Deteksi spesifik Satwa & Hewan
         fauna_map = {
-            "rusa totol": ("Rusa Totol", "Penangkaran Hewan (LOC007)", "LOC007", "Rusa Totol dilindungi di area Penangkaran Hewan. Hewan ini memiliki corak bintik putih alami."),
-            "rusa": ("Rusa", "Kandang Rusa (LOC008)", "LOC008", "Satwa rusa berada di Kandang Rusa utama di area konservasi Hutan UNESA."),
-            "ayam": ("Ayam", "Kandang Ayam (LOC002)", "LOC002", "Ayam berada di Kandang Ayam di kawasan Hutan UNESA."),
-            "merak": ("Merak", "Zona Merak (LOC010)", "LOC010", "Burung merak berada di Zona Merak di jalur wisata Hutan UNESA."),
-            "angsa": ("Angsa", "Zona Angsa dan Bebek (LOC012)", "LOC012", "Angsa dan bebek berada di Zona Angsa dan Bebek dekat perairan hutan."),
-            "bebek": ("Bebek", "Zona Angsa dan Bebek (LOC012)", "LOC012", "Bebek dan angsa dapat dijumpai di Zona Angsa dan Bebek (LOC012)."),
-            "merpati": ("Merpati", "Zona Merpati (LOC014)", "LOC014", "Kawanan burung merpati berada di Zona Merpati (LOC014)."),
-            "iguana": ("Iguana", "Penangkaran Hewan (LOC007)", "LOC007", "Iguana dirawat di area Penangkaran Hewan (LOC007).")
+            "rusa totol": ("Rusa Totol", "Penangkaran Hewan (LOC007)", "LOC007", "Rusa totol adalah mamalia berbintik putih yang dilindungi di area penangkaran Hutan UNESA."),
+            "rusa": ("Rusa", "Kandang Rusa (LOC008)", "LOC008", "Rusa adalah mamalia pemakan tumbuhan yang hidup di kawasan konservasi Hutan UNESA."),
+            "ayam": ("Ayam", "Kandang Ayam (LOC002)", "LOC002", "Ayam adalah unggas peliharaan yang dirawat di kandang khusus kawasan Hutan UNESA."),
+            "merak": ("Merak", "Zona Merak (LOC010)", "LOC010", "Merak adalah burung dengan bulu ekor bermotif mata yang berada di Zona Merak Hutan UNESA."),
+            "angsa": ("Angsa", "Zona Angsa dan Bebek (LOC012)", "LOC012", "Angsa adalah unggas air berleher panjang yang hidup di zona perairan Hutan UNESA."),
+            "bebek": ("Bebek", "Zona Angsa dan Bebek (LOC012)", "LOC012", "Bebek adalah unggas air yang hidup berdampingan dengan angsa di zona kolam Hutan UNESA."),
+            "merpati": ("Merpati", "Zona Merpati (LOC014)", "LOC014", "Merpati adalah burung jinak pemakan biji-bijian yang berkumpul di Zona Merpati."),
+            "iguana": ("Iguana", "Penangkaran Hewan (LOC007)", "LOC007", "Iguana adalah reptil herbivora yang dirawat di area penangkaran Hutan UNESA.")
         }
         for key, (f_name, spot_name, spot_id, desc) in fauna_map.items():
             if key in q:
+                speech = (
+                    f"{desc} Lokasinya ada di {spot_name}."
+                    if wants_route else desc
+                )
+                action = (
+                    "navigate_to_spot"
+                    if wants_route
+                    else ("none" if self._is_definition_query(q) else "show_spot_detail")
+                )
                 return {
-                    "speech": f"{desc} Lokasinya ada di {spot_name}.",
+                    "speech": speech,
                     "emotion": "neutral",
-                    "action": "show_spot_detail",
+                    "action": action,
                     "action_payload": {"spot_id": spot_id}
                 }
+
+        # 1b. Pertanyaan daftar hewan secara umum (mis. "Hewan apa aja yg ada di unesa?")
+        if any(k in q for k in ("hewan", "satwa", "binatang", "fauna")):
+            return {
+                "speech": "Di Hutan UNESA ada beberapa satwa yang bisa kamu temui, yaitu Rusa, Rusa Totol, Merak, Iguana, Angsa, Bebek, Merpati, dan Ayam.",
+                "emotion": "happy",
+                "action": "none",
+                "action_payload": {}
+            }
 
         # 2. Deteksi fasilitas ibadah
         if any(w in q for w in ["musholla", "masjid", "sholat", "solat", "wudhu"]):
             return {
                 "speech": "Masjid Baitul Makmur berada di dekat pintu masuk kampus, dan Musholla Rektorat ada di sayap timur Gedung Rektorat Lantai 1.",
                 "emotion": "neutral",
-                "action": "show_spot_detail",
+                "action": "navigate_to_spot" if wants_route else "show_spot_detail",
                 "action_payload": {"spot_id": "LOC017"}
             }
 
@@ -264,7 +434,7 @@ class GeminiService:
             return {
                 "speech": "Fasilitas toilet tersedia di Shelter Hutan dan Danau, koridor Arboretum, dan di Gedung Rektorat.",
                 "emotion": "neutral",
-                "action": "show_spot_detail",
+                "action": "navigate_to_spot" if wants_route else "show_spot_detail",
                 "action_payload": {"spot_id": "LOC016"}
             }
 
@@ -273,7 +443,7 @@ class GeminiService:
             return {
                 "speech": "Terdapat Danau Bunga Kertas di LOC005 dan Danau Kecil UNESA di LOC009 yang menjadi penyejuk ekosistem hutan kampus.",
                 "emotion": "neutral",
-                "action": "show_spot_detail",
+                "action": "navigate_to_spot" if wants_route else "show_spot_detail",
                 "action_payload": {"spot_id": "LOC005"}
             }
 
@@ -321,6 +491,48 @@ class GeminiService:
             "action": "none",
             "action_payload": {}
         }
+
+    @staticmethod
+    def _is_route_query(query: str) -> bool:
+        route_terms = (
+            "rute",
+            "arah",
+            "jalan ke",
+            "menuju",
+            "antar",
+            "navigasi",
+            "cara ke",
+            "bagaimana ke",
+        )
+        normalized_query = query.lower().strip()
+        return any(term in normalized_query for term in route_terms)
+
+    @staticmethod
+    def _is_definition_query(query: str) -> bool:
+        definition_terms = (
+            "apa itu",
+            "apa yang dimaksud",
+            "jelaskan",
+            "pengertian",
+            "maksudnya apa",
+        )
+        normalized_query = query.lower().strip()
+        return any(term in normalized_query for term in definition_terms)
+
+    @staticmethod
+    def _contains_fauna_query(query: str) -> bool:
+        fauna_terms = (
+            "rusa totol",
+            "rusa",
+            "ayam",
+            "merak",
+            "angsa",
+            "bebek",
+            "merpati",
+            "iguana",
+        )
+        normalized_query = query.lower().strip()
+        return any(term in normalized_query for term in fauna_terms)
 
 
 gemini_service = GeminiService()
