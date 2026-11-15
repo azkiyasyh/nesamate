@@ -202,12 +202,15 @@ class NesaVoiceAssistant {
     })
       .then(res => (res.ok ? res.json() : null))
       .then(data => {
-        console.log('[NesaMate Voice] Respons /api/tts:', data);
+        const previewUrl = data && data.audio_url && data.audio_url.startsWith('data:')
+          ? `${data.audio_url.slice(0, 40)}... (${data.audio_url.length} chars)`
+          : (data ? data.audio_url : null);
+        console.log('[NesaMate Voice] Respons /api/tts:', { ...data, audio_url: previewUrl });
         if (data && data.audio_url) {
           const audio = new Audio(data.audio_url);
           this.currentAudio = audio;
           audio.onplay = () => {
-            console.log('[NesaMate Voice] Memutar audio server:', data.audio_url);
+            console.log('[NesaMate Voice] Memutar audio server:', previewUrl);
             this.isSpeaking = true;
             startLipSync();
             if (this.onSpeakingStateChange) this.onSpeakingStateChange(true);

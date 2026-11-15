@@ -264,5 +264,6 @@ def text_to_speech(req: TTSRequest):
     audio_url = gemini_service.generate_speech_audio(req.text)
     tts_ms = round((time.time() - t0) * 1000, 1)
     benchmarks = {"tts_ms": tts_ms}
-    print(f"[BENCHMARK TTS] TTS: {tts_ms}ms | URL: {audio_url}")
+    preview_url = (audio_url[:60] + "...") if audio_url and len(audio_url) > 60 else audio_url
+    print(f"[BENCHMARK TTS] TTS: {tts_ms}ms | URL: {preview_url}")
     return TTSResponse(audio_url=audio_url, cached=bool(audio_url), benchmarks=benchmarks)
