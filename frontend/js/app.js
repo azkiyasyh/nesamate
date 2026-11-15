@@ -139,17 +139,12 @@ async function initLive2DAvatar() {
       height: canvasSize
     });
 
-    // 2. Load model Live2D Nesa (dukung path primer & fallback)
+    // 2. Load model Live2D Nesa langsung dari assets utama
     let loadedModel = null;
     try {
-      loadedModel = await PIXI.live2d.Live2DModel.from('assets/live2d/nesa/nesa.model3.json', { autoInteract: false });
+      loadedModel = await PIXI.live2d.Live2DModel.from('assets/AVA Nesa.model3.json', { autoInteract: false });
     } catch (e1) {
-      console.warn('[Live2D] Path primer nesa.model3.json gagal, mencoba fallback path:', e1);
-      try {
-        loadedModel = await PIXI.live2d.Live2DModel.from('assets/AVA Nesa.model3.json', { autoInteract: false });
-      } catch (e2) {
-        console.error('[Live2D] Path fallback juga gagal:', e2);
-      }
+      console.error('[Live2D] Gagal memuat AVA Nesa.model3.json:', e1);
     }
 
     if (!loadedModel) {
@@ -190,7 +185,7 @@ async function initLive2DAvatar() {
       if (!fallbackImg) {
         fallbackImg = document.createElement('img');
         fallbackImg.id = 'nesa-avatar-fallback';
-        fallbackImg.src = 'assets/live2d/nesa/nesa.2048/texture_00.png';
+        fallbackImg.src = 'assets/AVA Nesa.2048/texture_00.png';
         fallbackImg.style.width = '320px';
         fallbackImg.style.height = '320px';
         fallbackImg.style.objectFit = 'contain';
