@@ -45,8 +45,101 @@ let pixiApp = null;
 let nesaModel = null;
 let isModelLoading = false;
 
+let _avatarCurrentState = 'full'; // 'full' | 'pip'
+let _avatarLastFullSlot = null;   // Menyimpan slot elemen tempat avatar saat mode full
+
+function _rescaleAvatarForPip(size = 96) {
+  if (!pixiApp || !nesaModel) return;
+  try {
+    pixiApp.renderer.resize(size, size);
+    nesaModel.anchor.set(0.5, 0.5);
+    nesaModel.x = size / 2;
+
+    // Zoom 1.7x agar menampilkan setengah badan (antlers, kepala, wajah, & dada/vest) seperti video call
+    const baseW = nesaModel.internalModel?.originalWidth || nesaModel.width || 400;
+    const baseH = nesaModel.internalModel?.originalHeight || nesaModel.height || 400;
+    const baseScale = Math.min((size - 4) / baseW, (size - 4) / baseH);
+    const zoomHalfBody = 1.7;
+    const scale = baseScale * zoomHalfBody;
+    nesaModel.scale.set(scale, scale);
+
+    // Naikkan posisi vertikal agar avatar tidak tenggelam:
+    // Tanduk & kepala berada manis di atas, wajah & rompi dada tampil jelas di tengah frame
+    nesaModel.y = Math.round(size * 0.54); // ~52px pada canvas 96px
+  } catch (e) {}
+}
+
+function _rescaleAvatarForFull() {
+  if (!pixiApp || !nesaModel) return;
+  try {
+    const canvasSize = 400;
+    const targetRenderDim = 385;
+    pixiApp.renderer.resize(canvasSize, canvasSize);
+    nesaModel.anchor.set(0.5, 0.5);
+    nesaModel.x = canvasSize / 2;
+    nesaModel.y = canvasSize / 2 + 10;
+    const baseW = nesaModel.internalModel?.originalWidth || nesaModel.width || 400;
+    const baseH = nesaModel.internalModel?.originalHeight || nesaModel.height || 400;
+    const scale = Math.min(targetRenderDim / baseW, targetRenderDim / baseH);
+    nesaModel.scale.set(scale, scale);
+  } catch (e) {}
+}
+
 function setAvatarState(state) {
-  // Safe helper jika dipanggil oleh modul lain
+  const avatarContainer = document.getElementById('nesa-avatar-container');
+  const pipContainer = document.getElementById('nesa-pip-container');
+  const pipFrame = pipContainer ? pipContainer.querySelector('.nesa-pip-video-frame') : null;
+
+  if (!avatarContainer) return;
+
+  // Normalisasi 'compact' → 'pip'
+  if (state === 'compact') state = 'pip';
+
+  const currentScreen = window.nesaApp ? window.nesaApp.currentScreen : 'screen-landing';
+  const challengeIsInIntro = window.nesaApp?.challengeState?.isInIntro;
+
+  // Layar yang force-PiP: free mode, jogging, challenge setelah intro selesai
+  const isForceMapScreen = currentScreen === 'screen-free-mode' ||
+                           currentScreen === 'screen-jogging-mode' ||
+                           (currentScreen === 'screen-challenge-mode' && !challengeIsInIntro);
+
+  // Jika state 'full' dipanggil saat di layar peta, paksa jadi 'pip'
+  // 'hidden' dibiarkan apa adanya (saat modal pilih pos terbuka)
+  if (state === 'full' && isForceMapScreen) {
+    state = 'pip';
+  }
+
+  _avatarCurrentState = state;
+
+  if (state === 'pip') {
+    // Mode PiP: Avatar mengecil di pojok kiri bawah (Video Call Style)
+    if (pipContainer && pipFrame) {
+      if (!pipFrame.contains(avatarContainer)) {
+        if (avatarContainer.parentElement && avatarContainer.parentElement !== pipFrame) {
+          _avatarLastFullSlot = avatarContainer.parentElement;
+        }
+        pipFrame.appendChild(avatarContainer);
+      }
+      pipContainer.classList.add('is-pip-active');
+      _rescaleAvatarForPip(96);
+    }
+  } else if (state === 'full') {
+    // Mode Full: Avatar kembali ke slot utama layar
+    if (pipContainer) pipContainer.classList.remove('is-pip-active');
+    const challengeSlot = document.getElementById('challenge-intro-avatar-slot');
+    const targetSlot = (currentScreen === 'screen-challenge-mode' && challengeSlot)
+                       ? challengeSlot
+                       : (_avatarLastFullSlot ||
+                          document.getElementById('greeting-avatar-slot') ||
+                          document.getElementById('landing-avatar-slot'));
+    if (targetSlot && !targetSlot.contains(avatarContainer)) {
+      targetSlot.appendChild(avatarContainer);
+    }
+    _rescaleAvatarForFull();
+  } else {
+    // Mode 'hidden': Sembunyikan PiP, avatar tidak muncul di manapun
+    if (pipContainer) pipContainer.classList.remove('is-pip-active');
+  }
 }
 window.setAvatarState = setAvatarState;
 
@@ -54,15 +147,26 @@ function attachAvatarToScreen(screenId) {
   const container = document.getElementById('nesa-avatar-container');
   if (!container) return;
 
+  // Jangan paksa pindah jika sedang PiP atau hidden
+  if (_avatarCurrentState === 'pip' || _avatarCurrentState === 'hidden') return;
+
   if (screenId === 'screen-landing') {
     const landingSlot = document.getElementById('landing-avatar-slot');
     if (landingSlot && !landingSlot.contains(container)) {
+      _avatarLastFullSlot = landingSlot;
       landingSlot.appendChild(container);
     }
   } else if (screenId === 'screen-greeting') {
     const greetingSlot = document.getElementById('greeting-avatar-slot');
     if (greetingSlot && !greetingSlot.contains(container)) {
+      _avatarLastFullSlot = greetingSlot;
       greetingSlot.appendChild(container);
+    }
+  } else if (screenId === 'screen-challenge-mode') {
+    const challengeSlot = document.getElementById('challenge-intro-avatar-slot');
+    if (challengeSlot && !challengeSlot.contains(container)) {
+      _avatarLastFullSlot = challengeSlot;
+      challengeSlot.appendChild(container);
     }
   }
 }
@@ -177,6 +281,11 @@ async function initLive2DAvatar() {
     if (existingFallback) existingFallback.remove();
 
     console.log("SUCCESS: Live2D Nesa berhasil dipasang besar dan proporsional simetris!");
+
+    // Sesuaikan skala jika model selesai dimuat dalam state PiP
+    if (_avatarCurrentState === 'pip') {
+      _rescaleAvatarForPip(96);
+    }
   } catch (err) {
     console.error("Gagal load Live2D Nesa:", err);
     // Tampilkan avatar fallback tekstur jika Live2D gagal agar tampilan tidak kosong
@@ -203,15 +312,11 @@ window.initLive2DAvatar = initLive2DAvatar;
 // Listener resize window/orientasi layar agar avatar selalu 1:1 proporsional
 window.addEventListener('resize', () => {
   if (pixiApp && nesaModel) {
-    try {
-      pixiApp.renderer.resize(400, 400);
-      nesaModel.x = 200;
-      nesaModel.y = 210;
-      const baseW = nesaModel.internalModel?.originalWidth || nesaModel.width || 400;
-      const baseH = nesaModel.internalModel?.originalHeight || nesaModel.height || 400;
-      const scale = Math.min(385 / baseW, 385 / baseH);
-      nesaModel.scale.set(scale, scale);
-    } catch (e) {}
+    if (_avatarCurrentState === 'pip') {
+      _rescaleAvatarForPip(96);
+    } else {
+      _rescaleAvatarForFull();
+    }
   }
 });
 
@@ -232,6 +337,7 @@ class NesaApp {
 
     // Challenge Mode State
     this.challengeState = {
+      isInIntro: true,
       activePosIndex: 1, // 1 to 6
       positions: JSON.parse(JSON.stringify(NESA_DATA.challengePositions)).map(p => ({
         ...p,
@@ -267,14 +373,31 @@ class NesaApp {
    * Menampilkan layar tertentu secara bersih tanpa bertumpuk
    */
   showScreen(screenId) {
+    this.currentScreen = screenId;
+
     const container = document.querySelector('.mobile-device-container');
     if (container) {
       container.classList.toggle('is-onboarding', screenId === 'screen-landing');
     }
 
-    // DEFAULT STATE: Avatar Nesa HARUS TAMPIL BESAR dan jelas di layar utama pada Mode Eksplorasi, Mode Jogging, maupun Mode Tantangan (Challenge Mode).
-    // Avatar TIDAK BOLEH otomatis mengecil hanya karena berpindah mode atau saat Nesa sedang berbicara biasa.
-    if (screenId !== 'screen-landing') {
+    const pipContainer = document.getElementById('nesa-pip-container');
+    if (pipContainer) {
+      pipContainer.classList.remove('is-drawer-open');
+    }
+
+    // Layar yang menampilkan peta: avatar tetap tampil, mengecil dan menepi di kiri bawah (PiP Video Call)
+    // Layar non-peta (landing / greeting / challenge intro): avatar kembali tampil besar di tengah slot layar
+    const mapScreens = ['screen-free-mode', 'screen-jogging-mode'];
+
+    if (mapScreens.includes(screenId)) {
+      this.setAvatarState('pip');
+    } else if (screenId === 'screen-challenge-mode') {
+      if (this.challengeState.isInIntro) {
+        this.setAvatarState('full');
+      } else {
+        this.setAvatarState('pip');
+      }
+    } else {
       this.setAvatarState('full');
     }
 
@@ -284,10 +407,9 @@ class NesaApp {
     const target = document.getElementById(screenId);
     if (target) {
       target.classList.add('is-active');
-      this.currentScreen = screenId;
     }
 
-    // Pindahkan container avatar ke slot layar aktif jika perlu
+    // Pindahkan container avatar ke slot layar jika mode full
     attachAvatarToScreen(screenId);
 
     // Tangani inisialisasi dan isolasi peta per layar
@@ -309,6 +431,9 @@ class NesaApp {
         window.nesaMap.clearJoggingTrack();
       }
       this.renderChallengeCards();
+      if (this.challengeState.isInIntro) {
+        this.showChallengeIntro();
+      }
     } else if (screenId === 'screen-jogging-mode') {
       this.activeMapMode = 'jogging';
       if (window.nesaMap) {
@@ -454,10 +579,8 @@ class NesaApp {
 
     if (btnChallengeMode) {
       btnChallengeMode.addEventListener('click', () => {
+        this.challengeState.isInIntro = true;
         this.showScreen('screen-challenge-mode');
-        setTimeout(() => {
-          this.openChallengeStartSelector();
-        }, 300);
       });
     }
 
@@ -515,13 +638,19 @@ class NesaApp {
     if (navTabFreeMap) navTabFreeMap.addEventListener('click', () => this.closeDrawer());
     if (btnCloseDrawer) btnCloseDrawer.addEventListener('click', () => this.closeDrawer());
 
-    // Interaksi klik avatar: jika compact, kembalikan ke full
-    const avatarContainer = document.getElementById('nesa-avatar-container');
-    if (avatarContainer) {
-      avatarContainer.addEventListener('click', () => {
-        if (avatarContainer.classList.contains('avatar-compact')) {
-          this.setAvatarState('full');
-          this.showToast('✨ Avatar Nesa diperbesar');
+    // Interaksi klik avatar PiP (Video Call Style)
+    const pipContainer = document.getElementById('nesa-pip-container');
+    if (pipContainer) {
+      pipContainer.addEventListener('click', () => {
+        if (this.currentScreen === 'screen-free-mode') {
+          this.openDrawer();
+          this.showToast('✨ Nesa siap membantu!');
+        } else if (this.currentScreen === 'screen-challenge-mode') {
+          this.speakActiveChallengeRoute();
+        } else if (this.currentScreen === 'screen-jogging-mode') {
+          this.speakJoggingCue();
+        } else {
+          this.showToast('✨ Nesa (Live Tour Guide)');
         }
       });
     }
@@ -532,7 +661,7 @@ class NesaApp {
         if (window.nesaMap) window.nesaMap.clearRoute();
         const navCard = document.getElementById('free-nav-active-card');
         if (navCard) navCard.classList.remove('is-active');
-        this.setAvatarState('full');
+        this.setAvatarState('pip');
         this.showToast('🧭 Navigasi rute ditutup');
       });
     }
@@ -561,7 +690,23 @@ class NesaApp {
     const btnChallengeBack = document.getElementById('btn-challenge-back');
     if (btnChallengeBack) {
       btnChallengeBack.addEventListener('click', () => {
+        const modal = document.getElementById('challenge-start-modal');
+        if (modal && modal.classList.contains('is-open')) {
+          modal.classList.remove('is-open');
+          if (this.challengeState.isInIntro) {
+            this.showChallengeIntro();
+            return;
+          }
+        }
         this.showScreen('screen-greeting');
+      });
+    }
+
+    // Tombol di dalam intro: "Pilih Pos Petualangan"
+    const btnStartChoose = document.getElementById('btn-challenge-start-choose');
+    if (btnStartChoose) {
+      btnStartChoose.addEventListener('click', () => {
+        this.openChallengeStartSelector();
       });
     }
 
@@ -573,7 +718,8 @@ class NesaApp {
 
     if (navTabMisi) {
       navTabMisi.addEventListener('click', () => {
-        this.setAvatarState('full');
+        // User request: avatar PiP muncul di map dan section misi
+        this.setAvatarState('pip');
         navTabMisi.classList.add('is-active');
         navTabMap.classList.remove('is-active');
         if (cardsContainer) cardsContainer.style.display = 'flex';
@@ -583,12 +729,12 @@ class NesaApp {
 
     if (cardsContainer) {
       cardsContainer.addEventListener('focusin', (event) => {
-        if (event.target.matches('.passcode-pill-input')) this.setAvatarState('compact');
+        if (event.target.matches('.passcode-pill-input')) this.setAvatarState('pip');
       });
       cardsContainer.addEventListener('focusout', (event) => {
         if (!event.target.matches('.passcode-pill-input')) return;
         setTimeout(() => {
-          if (!cardsContainer.querySelector('.passcode-pill-input:focus')) this.setAvatarState('full');
+          if (!cardsContainer.querySelector('.passcode-pill-input:focus')) this.setAvatarState('pip');
         }, 150);
       });
     }
@@ -626,6 +772,11 @@ class NesaApp {
       modalBackdrop.addEventListener('click', () => {
         const modal = document.getElementById('challenge-start-modal');
         if (modal) modal.classList.remove('is-open');
+        if (this.challengeState.isInIntro) {
+          this.showChallengeIntro();
+        } else {
+          this.setAvatarState('pip');
+        }
       });
     }
 
@@ -840,17 +991,65 @@ class NesaApp {
   }
 
   /**
-   * Dialog: Nesa bertanya mau mulai dari pos mana saat masuk Mode Berpetualang
+   * Tampilkan subview INTRO Mode Berpetualang:
+   * Avatar full menyapa & menjelaskan, lalu muncul tombol "Pilih Pos"
+   */
+  showChallengeIntro() {
+    this.challengeState.isInIntro = true;
+
+    // Sembunyikan progress bar, kartu misi, peta, bottom nav → tampilkan intro
+    const introSubview   = document.getElementById('challenge-intro-subview');
+    const progressBanner = document.querySelector('#screen-challenge-mode .challenge-progress-banner');
+    const cardsContainer = document.getElementById('challenge-cards-container');
+    const mapContainer   = document.getElementById('challenge-map-subview');
+    const bottomNav      = document.querySelector('#screen-challenge-mode .bottom-nav-bar');
+
+    if (introSubview)   introSubview.style.display   = 'flex';
+    if (progressBanner) progressBanner.style.display = 'none';
+    if (cardsContainer) cardsContainer.style.display = 'none';
+    if (mapContainer)   mapContainer.classList.remove('is-visible');
+    if (bottomNav)      bottomNav.style.display      = 'none';
+
+    // Avatar tampil FULL di slot intro (bukan PiP)
+    const avatarContainer = document.getElementById('nesa-avatar-container');
+    const pipContainer    = document.getElementById('nesa-pip-container');
+    const introSlot       = document.getElementById('challenge-intro-avatar-slot');
+
+    if (pipContainer) pipContainer.classList.remove('is-pip-active');
+    if (introSlot && avatarContainer && !introSlot.contains(avatarContainer)) {
+      _avatarLastFullSlot = introSlot;
+      introSlot.appendChild(avatarContainer);
+    }
+    _avatarCurrentState = 'full';
+    _rescaleAvatarForFull();
+
+    // Ucapkan sapaan intro
+  // Ucapkan sapaan intro
+      const greeting = `Halo ${this.userName || 'Petualang'}! Di Mode Berpetualang, kamu bisa berkeliling dan menyelesaikan misi di setiap pos nya. Mau mulai dari pos mana dulu?`;
+      nesaVoice.speak(greeting);
+
+      const introText = document.getElementById('challenge-intro-speech-text');
+      if (introText) {
+        introText.textContent = `"${greeting}"`;
+      }
+    }
+
+  /**
+   * Dialog: Tampilkan modal pilihan pos (avatar TERSEMBUNYI saat modal terbuka)
    */
   openChallengeStartSelector() {
-    const modal = document.getElementById('challenge-start-modal');
-    if (modal) {
-      modal.classList.add('is-open');
+    // Sembunyikan avatar sepenuhnya saat user memilih pos (tidak PiP, tidak full)
+    const pipContainer    = document.getElementById('nesa-pip-container');
+    const avatarContainer = document.getElementById('nesa-avatar-container');
+    if (pipContainer)    pipContainer.classList.remove('is-pip-active');
+    if (avatarContainer) {
+      _avatarLastFullSlot = avatarContainer.parentElement || document.getElementById('challenge-intro-avatar-slot');
     }
-    this.renderChallengePosSelectionList();
+    _avatarCurrentState = 'hidden';
 
-    const askText = `Halo ${this.userName || 'Petualang'}! Di Mode Berpetualang, kamu mau mulai dari pos mana dulu? Pilih pos pertamamu dan aku akan langsung memandu rutenya!`;
-    nesaVoice.speak(askText);
+    const modal = document.getElementById('challenge-start-modal');
+    if (modal) modal.classList.add('is-open');
+    this.renderChallengePosSelectionList();
   }
 
   /**
@@ -899,6 +1098,17 @@ class NesaApp {
     const modal = document.getElementById('challenge-start-modal');
     if (modal) modal.classList.remove('is-open');
 
+    // Keluar dari mode intro → sekarang masuk ke map/misi (PiP aktif)
+    this.challengeState.isInIntro = false;
+
+    // Sembunyikan intro subview, tampilkan kembali progress bar & bottom nav
+    const introSubview   = document.getElementById('challenge-intro-subview');
+    const progressBanner = document.querySelector('#screen-challenge-mode .challenge-progress-banner');
+    const bottomNav      = document.querySelector('#screen-challenge-mode .bottom-nav-bar');
+    if (introSubview)   introSubview.style.display   = 'none';
+    if (progressBanner) progressBanner.style.display = '';
+    if (bottomNav)      bottomNav.style.display      = '';
+
     this.challengeState.activePosIndex = posIndex;
     this.renderChallengeCards();
 
@@ -927,7 +1137,8 @@ class NesaApp {
    * Tampilkan subview peta rute pos dan gambar jalurnya
    */
   showChallengeMapSubView(speakGuide = false) {
-    this.setAvatarState('compact');
+    // Avatar tampil kecil (PiP video call) di map & section misi
+    this.setAvatarState('pip');
     const navTabMisi = document.getElementById('nav-tab-challenge-misi');
     const navTabMap = document.getElementById('nav-tab-challenge-map');
     const cardsContainer = document.getElementById('challenge-cards-container');
@@ -1034,26 +1245,30 @@ class NesaApp {
   }
 
   openDrawer() {
-    this.setAvatarState('compact');
+    this.setAvatarState('pip');
     const drawerAiGuide = document.getElementById('drawer-ai-guide');
+    const pipContainer = document.getElementById('nesa-pip-container');
     const navTabFreeGuide = document.getElementById('nav-tab-free-guide');
     const navTabFreeMap = document.getElementById('nav-tab-free-map');
     if (drawerAiGuide) drawerAiGuide.classList.add('is-open');
+    if (pipContainer) pipContainer.classList.add('is-drawer-open');
     if (navTabFreeGuide) navTabFreeGuide.classList.add('is-active');
     if (navTabFreeMap) navTabFreeMap.classList.remove('is-active');
   }
 
   closeDrawer() {
     const drawerAiGuide = document.getElementById('drawer-ai-guide');
+    const pipContainer = document.getElementById('nesa-pip-container');
     const navTabFreeGuide = document.getElementById('nav-tab-free-guide');
     const navTabFreeMap = document.getElementById('nav-tab-free-map');
     if (drawerAiGuide) drawerAiGuide.classList.remove('is-open');
+    if (pipContainer) pipContainer.classList.remove('is-drawer-open');
     if (navTabFreeGuide) navTabFreeGuide.classList.remove('is-active');
     if (navTabFreeMap) navTabFreeMap.classList.add('is-active');
 
-    const navCard = document.getElementById('free-nav-active-card');
-    if (!navCard || !navCard.classList.contains('is-active')) {
-      this.setAvatarState('full');
+    // Di mode peta (screen-free-mode / screen-jogging-mode), avatar tetap di mode PiP video call
+    if (this.currentScreen === 'screen-free-mode' || this.currentScreen === 'screen-jogging-mode') {
+      this.setAvatarState('pip');
     }
   }
 

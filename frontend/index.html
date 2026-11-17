@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
 
   <!-- Custom CSS Design System (Anti-Bertumpuk & Safari Natural) -->
-  <link rel="stylesheet" href="css/style.css?v=2.3.4">
+  <link rel="stylesheet" href="css/style.css?v=2.4.5">
 
   <!-- Cubism Core & PixiJS v6.5.8 -->
   <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
@@ -196,6 +196,26 @@
         <h2 class="screen-header-title">Mode Berpetualang</h2>
       </header>
 
+      <!-- Subview Intro: Nesa Full Menyapa & Bertanya Mulai dari Pos Mana -->
+      <div id="challenge-intro-subview" class="challenge-intro-subview">
+        <!-- Floating Speech Bubble di Atas Kepala Nesa -->
+        <div class="speech-bubble-floating">
+          <p id="challenge-intro-speech-text" class="speech-bubble-text">
+            "Halo Petualang! Di Mode Berpetualang, kamu mau mulai dari pos mana dulu? Pilih pos pertamamu dan aku akan langsung memandu rutenya!"
+          </p>
+        </div>
+
+        <!-- Container Slot Avatar Live2D Nesa saat Intro Berpetualang -->
+        <div id="challenge-intro-avatar-slot" class="avatar-hero-wrapper"></div>
+
+        <!-- Tombol Lanjut ke Pilihan Pos -->
+        <div class="challenge-intro-actions">
+          <button id="btn-challenge-start-choose" class="pill-mode-btn btn-sage">
+            🎯 Pilih Pos Petualangan
+          </button>
+        </div>
+      </div>
+
       <!-- Progress Bar (Misi Tercapai X/6) -->
       <div class="challenge-progress-banner">
         <div class="progress-label-row">
@@ -343,6 +363,21 @@
     <!-- TOAST NOTIFICATION -->
     <div id="nesa-toast-pill" class="nesa-toast-pill">Pesan</div>
 
+    <!-- ========================================================
+         AVATAR PiP (PICTURE-IN-PICTURE) — Video Call Style
+         Tampil di kiri bawah saat peta / info aktif
+         ======================================================== -->
+    <div id="nesa-pip-container" class="nesa-pip-container" title="Nesa (Live Tour Guide)">
+      <div class="nesa-pip-video-frame">
+        <!-- Live2D Avatar Container (#nesa-avatar-container) moves here when PiP is active -->
+      </div>
+      <div class="nesa-pip-video-badge">
+        <span class="pip-status-dot"></span>
+        <span class="pip-name-text">Nesa</span>
+        <span class="pip-cam-icon">📹</span>
+      </div>
+    </div>
+
   </div>
 
   <!-- Leaflet Core & Routing Machine Scripts -->
@@ -351,9 +386,9 @@
 
   <!-- Modular Scripts -->
   <script src="js/data.js?v=2.3.8"></script>
-  <script src="js/speech.js?v=2.3.9"></script>
+  <script src="js/speech.js?v=2.4.0"></script>
   <script src="js/map.js?v=2.4.6"></script>
-  <script src="js/app.js?v=2.3.9"></script>
+  <script src="js/app.js?v=2.4.6"></script>
 
 </body>
 </html>

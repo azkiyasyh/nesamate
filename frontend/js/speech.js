@@ -52,6 +52,9 @@ class NesaVoiceAssistant {
     this.restartTimer = null;
     this.speakingWatchdog = null;
     this.currentUtterance = null;
+    this.currentAudio = null;
+    this.speechRequestId = 0;
+    this.currentAbortController = null;
     this.keepAliveTimer = null;
 
     // Callbacks UI
@@ -107,6 +110,10 @@ class NesaVoiceAssistant {
       return;
     }
 
+    // 1. Hentikan suara yang sedang berbunyi (Anti-Overlap / Anti-Tumpang Tindih)
+    this.stopSpeaking();
+    const reqId = ++this.speechRequestId;
+
     this.clearRestartTimer();
     this.clearSpeakingWatchdog();
 
@@ -119,12 +126,6 @@ class NesaVoiceAssistant {
       if (this.onListeningStateChange) this.onListeningStateChange(false);
     }
 
-    if (this.synth.speaking) {
-      try {
-        this.synth.cancel();
-      } catch (e) {}
-    }
-
     const cleanText = text.replace(/<[^>]*>/g, '').trim();
     if (!cleanText) {
       if (this.callMode) this.scheduleRestartListening(200);
@@ -132,7 +133,6 @@ class NesaVoiceAssistant {
     }
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    // Simpan referensi ke instance agar tidak di-garbage-collect oleh Chrome V8 saat bersuara panjang
     this.currentUtterance = utterance;
 
     utterance.lang = 'id-ID';
@@ -145,6 +145,7 @@ class NesaVoiceAssistant {
     utterance.rate = 1.0;
 
     const finishSpeech = () => {
+      if (reqId !== this.speechRequestId) return;
       this.clearSpeakingWatchdog();
       stopLipSync(); // Hentikan gerakan mulut & set ParamMouthOpenY = 0
       this.isSpeaking = false;
@@ -159,6 +160,12 @@ class NesaVoiceAssistant {
     };
 
     utterance.onstart = () => {
+      if (reqId !== this.speechRequestId) {
+        if (this.synth) {
+          try { this.synth.cancel(); } catch (e) {}
+        }
+        return;
+      }
       this.isSpeaking = true;
       startLipSync(); // Mulai animasi mulut Live2D saat Nesa berbicara
       if (this.onSpeakingStateChange) this.onSpeakingStateChange(true);
@@ -166,26 +173,34 @@ class NesaVoiceAssistant {
     };
 
     utterance.onend = () => {
-      finishSpeech();
+      if (reqId === this.speechRequestId) {
+        finishSpeech();
+      }
     };
 
     utterance.onerror = (event) => {
       if (event.error === 'interrupted' || event.error === 'canceled') return;
-      finishSpeech();
+      if (reqId === this.speechRequestId) {
+        finishSpeech();
+      }
     };
 
     // Watchdog pengaman mengatasi bug Chrome di mana event onend tidak terpanggil
     const estimatedSec = Math.max(3, Math.ceil(cleanText.length / 9) + 2);
     this.speakingWatchdog = setTimeout(() => {
-      if (this.isSpeaking) {
+      if (this.isSpeaking && reqId === this.speechRequestId) {
         console.log('[NesaMate Voice] Watchdog: menyelesaikan status TTS otomatis');
         finishSpeech();
       }
     }, estimatedSec * 1000);
 
     const speakWithBrowser = (reason = '') => {
+      if (reqId !== this.speechRequestId) return;
       if (reason) console.warn('[NesaMate Voice] Fallback ke suara Chrome:', reason);
       try {
+        if (this.synth.speaking) {
+          this.synth.cancel();
+        }
         this.synth.speak(utterance);
       } catch (err) {
         console.warn('[NesaMate Voice] Gagal speak:', err);
@@ -195,21 +210,43 @@ class NesaVoiceAssistant {
 
     this.isSpeaking = true;
     console.log('[NesaMate Voice] Meminta audio TTS ke /api/tts...');
+
+    this.currentAbortController = new AbortController();
+    const signal = this.currentAbortController.signal;
+
     fetch('/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: cleanText })
+      body: JSON.stringify({ text: cleanText }),
+      signal: signal
     })
       .then(res => (res.ok ? res.json() : null))
       .then(data => {
+        // Jika permintaan baru sudah datang, abaikan respons lama
+        if (reqId !== this.speechRequestId) return;
+
         const previewUrl = data && data.audio_url && data.audio_url.startsWith('data:')
           ? `${data.audio_url.slice(0, 40)}... (${data.audio_url.length} chars)`
           : (data ? data.audio_url : null);
         console.log('[NesaMate Voice] Respons /api/tts:', { ...data, audio_url: previewUrl });
         if (data && data.audio_url) {
+          if (this.currentAudio) {
+            try {
+              this.currentAudio.pause();
+              this.currentAudio.currentTime = 0;
+            } catch (e) {}
+            this.currentAudio = null;
+          }
+
+          if (reqId !== this.speechRequestId) return;
+
           const audio = new Audio(data.audio_url);
           this.currentAudio = audio;
           audio.onplay = () => {
+            if (reqId !== this.speechRequestId) {
+              try { audio.pause(); } catch (e) {}
+              return;
+            }
             console.log('[NesaMate Voice] Memutar audio server:', previewUrl);
             this.isSpeaking = true;
             startLipSync();
@@ -217,27 +254,47 @@ class NesaVoiceAssistant {
             if (onStartCallback) onStartCallback();
           };
           audio.onended = () => {
-            this.currentAudio = null;
-            finishSpeech();
+            if (this.currentAudio === audio) {
+              this.currentAudio = null;
+            }
+            if (reqId === this.speechRequestId) {
+              finishSpeech();
+            }
           };
           audio.onerror = (e) => {
-            this.currentAudio = null;
-            speakWithBrowser('Audio element error');
+            if (this.currentAudio === audio) {
+              this.currentAudio = null;
+            }
+            if (reqId === this.speechRequestId) {
+              speakWithBrowser('Audio element error');
+            }
           };
           audio.play().catch((err) => {
-            this.currentAudio = null;
-            speakWithBrowser(`audio.play() diblokir/gagal: ${err.message}`);
+            if (this.currentAudio === audio) {
+              this.currentAudio = null;
+            }
+            if (reqId === this.speechRequestId) {
+              speakWithBrowser(`audio.play() diblokir/gagal: ${err.message}`);
+            }
           });
         } else {
           speakWithBrowser('audio_url kosong dari /api/tts');
         }
       })
       .catch((err) => {
-        speakWithBrowser(`Fetch /api/tts error: ${err.message}`);
+        if (err.name === 'AbortError') return;
+        if (reqId === this.speechRequestId) {
+          speakWithBrowser(`Fetch /api/tts error: ${err.message}`);
+        }
       });
   }
 
   stopSpeaking() {
+    this.speechRequestId++; // Batalkan seluruh respons fetch asinkron yang masih berjalan
+    if (this.currentAbortController) {
+      try { this.currentAbortController.abort(); } catch (e) {}
+      this.currentAbortController = null;
+    }
     this.clearSpeakingWatchdog();
     stopLipSync();
     if (this.currentAudio) {

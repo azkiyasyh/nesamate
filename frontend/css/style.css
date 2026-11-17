@@ -864,6 +864,46 @@ button {
   color: var(--color-primary);
 }
 
+/* Subview Intro Mode Berpetualang (Nesa Full Menyapa) */
+/* Default tersembunyi; ditampilkan oleh showChallengeIntro() via display:flex */
+.challenge-intro-subview {
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  flex: 1;
+  width: 100%;
+  padding: 16px 20px 24px;
+  animation: fadeIn 0.28s ease-out;
+  overflow-y: auto;
+}
+
+.avatar-hero-wrapper {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 260px;
+}
+
+.challenge-intro-subview .speech-bubble-floating {
+  margin-top: 6px;
+  margin-bottom: 8px;
+}
+
+.challenge-intro-actions {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: auto;
+  padding: 10px 0 6px;
+}
+
+.challenge-intro-actions .pill-mode-btn {
+  max-width: 320px;
+}
+
 .challenge-progress-banner {
   padding: 12px 18px;
   background: var(--color-card-cream);
@@ -1734,4 +1774,142 @@ button {
 .nesa-toast-pill.is-show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+/* ========================================================
+   AVATAR PiP — PICTURE-IN-PICTURE (Video Call Style)
+   Tampil menepi di kiri bawah saat menunjukkan peta / informasi.
+   Posisi dinaikkan agar tidak menutupi Bottom Nav, Audio Card,
+   maupun Drawer AI Guide saat dibuka.
+   ======================================================== */
+.nesa-pip-container {
+  position: absolute;
+  bottom: 185px; /* Dinaikkan agar tidak menutupi fitur navigasi/audio/bottom bar */
+  left: 14px;
+  z-index: 55; /* Di atas peta (z:1), filter & bottom nav (z:30) */
+  width: 100px;
+  height: 126px;
+  border-radius: 16px;
+  background: rgba(20, 38, 28, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 2px solid var(--color-gold);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 14px rgba(200, 180, 138, 0.3);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.65) translate(-20px, 25px);
+  transform-origin: left bottom;
+  transition: 
+    opacity 0.32s cubic-bezier(0.25, 1, 0.5, 1), 
+    transform 0.32s cubic-bezier(0.25, 1, 0.5, 1),
+    bottom 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.nesa-pip-container.is-pip-active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1) translate(0, 0);
+}
+
+/* Saat Drawer AI Guide dibuka, naikkan PiP tepat melayang di atas drawer */
+.nesa-pip-container.is-drawer-open {
+  bottom: calc(52% + 14px);
+}
+
+.nesa-pip-container:hover {
+  transform: scale(1.05) translate(0, 0);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 18px rgba(200, 180, 138, 0.45);
+}
+
+.nesa-pip-video-frame {
+  width: 100%;
+  height: 98px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 40%, rgba(127, 140, 106, 0.22) 0%, transparent 70%);
+}
+
+/* Override styling ukuran besar avatar saat berada di dalam PiP video frame */
+.nesa-pip-video-frame #nesa-avatar-container {
+  width: 96px !important;
+  height: 96px !important;
+  margin: 0 !important;
+  position: relative !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  z-index: 1 !important;
+}
+
+.nesa-pip-video-frame #canvas-live2d {
+  width: 100% !important;
+  height: 100% !important;
+  aspect-ratio: 1 / 1 !important;
+  object-fit: contain !important;
+  display: block !important;
+}
+
+.nesa-pip-video-frame #nesa-avatar-fallback {
+  width: 90px !important;
+  height: 90px !important;
+  object-fit: cover !important;
+  object-position: top center !important;
+  transform: scale(1.35) translateY(-2px) !important;
+}
+
+/* Badge baris bawah gaya Video Call */
+.nesa-pip-video-badge {
+  width: 100%;
+  height: 28px;
+  background: rgba(30, 59, 47, 0.96);
+  border-top: 1px solid rgba(200, 180, 138, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 8px;
+  flex-shrink: 0;
+}
+
+/* Pulsing live indicator dot */
+.pip-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #4ADE80;
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.8);
+  animation: pipPulseLive 1.8s infinite ease-in-out;
+  flex-shrink: 0;
+}
+
+@keyframes pipPulseLive {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.65;
+  }
+}
+
+.pip-name-text {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-gold);
+  letter-spacing: 0.4px;
+  font-family: var(--font-main);
+}
+
+.pip-cam-icon {
+  font-size: 11px;
+  opacity: 0.9;
 }
