@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NesaMate — Editor Jalur Walkable Network</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      background: #0f172a;
+      color: #f8fafc;
+    }
+    #map {
+      flex: 1;
+      height: 100%;
+      cursor: crosshair;
+    }
+    .sidebar {
+      width: 360px;
+      background: #1e293b;
+      border-left: 1px solid #334155;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+    }
+    @media (max-width: 820px) {
+      body { flex-direction: column; }
+      #map { height: 55vh; flex: none; }
+      .sidebar { width: 100%; height: 45vh; border-left: none; border-top: 1px solid #334155; }
+    }
+    h1 { margin: 0; font-size: 16px; }
+    .sub { font-size: 12px; color: #94a3b8; margin: 0; line-height: 1.4; }
+    .box {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 12px;
+    }
+    label { display: block; font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
+    input, select {
+      width: 100%;
+      padding: 7px 10px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #f8fafc;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 9px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #fff;
+      background: #22c55e;
+    }
+    button.blue { background: #3b82f6; }
+    button.warn { background: #f59e0b; color: #0f172a; }
+    button.danger { background: #ef4444; }
+    button.outline { background: transparent; border: 1px solid #475569; }
+    textarea {
+      width: 100%;
+      height: 140px;
+      background: #020617;
+      color: #a7f3d0;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 8px;
+      font-family: monospace;
+      font-size: 11px;
+      resize: vertical;
+    }
+    .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: #cbd5e1; }
+    .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <aside class="sidebar">
+    <div>
+      <h1>Editor Jalur Hutan UNESA</h1>
+      <p class="sub">Klik di peta untuk menggambar jalan baru. Klik dekat titik biru agar <b>tersambung (snap)</b> ke jaringan A* yang sudah ada.</p>
+    </div>
+
+    <div class="box legend">
+      <span><i class="dot" style="background:#38bdf8"></i>Jalur OSM</span>
+      <span><i class="dot" style="background:#facc15"></i>Jalur Baru</span>
+      <span><i class="dot" style="background:#22c55e"></i>Snap Tersambung</span>
+    </div>
+
+    <div class="box">
+      <label>Nama Jalur Baru</label>
+      <input id="way-name" value="Jalan Setapak Tambahan" />
+      <label>Tipe Jalan</label>
+      <select id="way-highway">
+        <option value="path">path (Jalan Setapak)</option>
+        <option value="footway">footway (Trotoar / Pejalan Kaki)</option>
+        <option value="service">service (Jalan Kampus)</option>
+      </select>
+      <div class="btn-grid">
+        <button class="outline" onclick="undoPoint()">↩ Undo Titik</button>
+        <button class="blue" onclick="finishCurrentWay()">✔ Selesai 1 Jalur</button>
+        <button class="danger" onclick="resetDrafts()">🗑 Hapus Draft</button>
+        <button class="warn" onclick="copyPatch()">📋 Copy JSON</button>
+      </div>
+      <button style="width:100%; margin-top:8px;" onclick="downloadMergedJson()">⬇ Download walkable_network.json</button>
+    </div>
+
+    <div class="box" id="status-box">
+      Memuat <code>assets/walkable_network.json</code>...
+    </div>
+
+    <div>
+      <label>Preview Tambahan (ways & nodes baru):</label>
+      <textarea id="json-preview" readonly></textarea>
+    </div>
+  </aside>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/data.js"></script>
+  <script>
+    let baseNetwork = null;
+    let nextNodeId = 9900000001;
+    let nextWayId = 990000001;
+
+    // Drafts: array of { id, highway, name, nodes: [nodeId...] }
+    let draftWays = [];
+    let draftNodes = {}; // nodeId -> { id, lat, lon }
+    let currentPoints = []; // [{ id, lat, lon, snapped }]
+    let currentLine = null;
+    let draftLayers = L.layerGroup();
+
+    const map = L.map('map', { maxZoom: 21 }).setView([-7.3007, 112.6708], 18);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 21,
+      maxNativeZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+    draftLayers.addTo(map);
+
+    function haversineMeters(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const toRad = d => (d * Math.PI) / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function findNearestExistingNode(lat, lng, maxMeters = 10) {
+      if (!baseNetwork) return null;
+      let best = null;
+      let bestDist = maxMeters;
+
+      const checkPool = (nodesObj) => {
+        for (const id of Object.keys(nodesObj)) {
+          const n = nodesObj[id];
+          const d = haversineMeters(lat, lng, n.lat, n.lon);
+          if (d < bestDist) {
+            bestDist = d;
+            best = { id: Number(n.id), lat: n.lat, lon: n.lon };
+          }
+        }
+      };
+
+      checkPool(baseNetwork.nodes);
+      checkPool(draftNodes);
+      return best;
+    }
+
+    async function loadNetwork() {
+      try {
+        const res = await fetch('assets/walkable_network.json');
+        baseNetwork = await res.json();
+
+        const maxExistingNode = Math.max(...Object.keys(baseNetwork.nodes).map(Number));
+        const maxExistingWay = Math.max(...baseNetwork.ways.map(w => Number(w.id)));
+        nextNodeId = Math.max(nextNodeId, maxExistingNode + 1000);
+        nextWayId = Math.max(nextWayId, maxExistingWay + 1000);
+
+        // Gambar jalur eksisting
+        baseNetwork.ways.forEach(w => {
+          const coords = w.nodes
+            .map(nid => baseNetwork.nodes[String(nid)])
+            .filter(Boolean)
+            .map(n => [n.lat, n.lon]);
+          if (coords.length > 1) {
+            L.polyline(coords, { color: '#38bdf8', weight: 3, opacity: 0.75 }).addTo(map);
+          }
+        });
+
+        // Gambar titik simpul eksisting
+        Object.values(baseNetwork.nodes).forEach(n => {
+          L.circleMarker([n.lat, n.lon], {
+            radius: 3.5,
+            color: '#0284c7',
+            fillColor: '#38bdf8',
+            fillOpacity: 0.9,
+            weight: 1
+          }).addTo(map);
+        });
+
+        // Tampilkan referensi lokasi NESA_DATA.spots
+        if (typeof NESA_DATA !== 'undefined' && Array.isArray(NESA_DATA.spots)) {
+          NESA_DATA.spots.forEach(s => {
+            L.circleMarker([s.lat, s.lng], {
+              radius: 5,
+              color: '#ffffff',
+              fillColor: '#1e3b2f',
+              fillOpacity: 0.9,
+              weight: 1.5
+            }).bindTooltip(`${s.id}: ${s.name}`).addTo(map);
+          });
+        }
+
+        updateStatus();
+      } catch (err) {
+        document.getElementById('status-box').textContent = 'Gagal memuat walkable_network.json: ' + err.message;
+      }
+    }
+
+    map.on('click', (e) => {
+      if (!baseNetwork) return;
+      const { lat, lng } = e.latlng;
+      const snap = findNearestExistingNode(lat, lng, 10);
+
+      let pt;
+      if (snap) {
+        pt = { id: snap.id, lat: snap.lat, lon: snap.lon, snapped: true };
+      } else {
+        const id = nextNodeId++;
+        const nodeObj = { id, lat: Number(lat.toFixed(7)), lon: Number(lng.toFixed(7)) };
+        draftNodes[String(id)] = nodeObj;
+        pt = { ...nodeObj, snapped: false };
+      }
+
+      currentPoints.push(pt);
+      redrawDrafts();
+      updateStatus();
+    });
+
+    function redrawDrafts() {
+      draftLayers.clearLayers();
+
+      // Gambar draft ways yang sudah disimpan
+      draftWays.forEach(w => {
+        const coords = w.nodes.map(id => {
+          const n = draftNodes[String(id)] || baseNetwork.nodes[String(id)];
+          return n ? [n.lat, n.lon] : null;
+        }).filter(Boolean);
+        if (coords.length > 1) {
+          L.polyline(coords, { color: '#facc15', weight: 5, opacity: 0.95 }).addTo(draftLayers);
+        }
+      });
+
+      // Gambar jalur aktif yang sedang diklik
+      if (currentPoints.length > 0) {
+        const coords = currentPoints.map(p => [p.lat, p.lon]);
+        if (coords.length > 1) {
+          L.polyline(coords, { color: '#bef264', weight: 5, dashArray: '6,6' }).addTo(draftLayers);
+        }
+        currentPoints.forEach(p => {
+          L.circleMarker([p.lat, p.lon], {
+            radius: p.snapped ? 6 : 4.5,
+            color: p.snapped ? '#16a34a' : '#ca8a04',
+            fillColor: p.snapped ? '#22c55e' : '#facc15',
+            fillOpacity: 1,
+            weight: 2
+          }).addTo(draftLayers);
+        });
+      }
+    }
+
+    function finishCurrentWay() {
+      if (currentPoints.length < 2) {
+        alert('Klik minimal 2 titik untuk membuat 1 ruas jalan.');
+        return;
+      }
+      const name = document.getElementById('way-name').value.trim() || 'Jalan Setapak Baru';
+      const highway = document.getElementById('way-highway').value || 'path';
+      draftWays.push({
+        id: nextWayId++,
+        highway,
+        name,
+        nodes: currentPoints.map(p => p.id)
+      });
+      currentPoints = [];
+      redrawDrafts();
+      updateStatus();
+    }
+
+    function undoPoint() {
+      if (currentPoints.length === 0) return;
+      const removed = currentPoints.pop();
+      if (!removed.snapped) {
+        // Hapus node jika belum dipakai di draftWays
+        const usedElsewhere = draftWays.some(w => w.nodes.includes(removed.id)) ||
+          currentPoints.some(p => p.id === removed.id);
+        if (!usedElsewhere) delete draftNodes[String(removed.id)];
+      }
+      redrawDrafts();
+      updateStatus();
+    }
+
+    function resetDrafts() {
+      draftWays = [];
+      draftNodes = {};
+      currentPoints = [];
+      redrawDrafts();
+      updateStatus();
+    }
+
+    function getPendingAllWays() {
+      const list = [...draftWays];
+      if (currentPoints.length >= 2) {
+        list.push({
+          id: nextWayId,
+          highway: document.getElementById('way-highway').value || 'path',
+          name: document.getElementById('way-name').value.trim() || 'Jalan Setapak Baru',
+          nodes: currentPoints.map(p => p.id)
+        });
+      }
+      return list;
+    }
+
+    function updateStatus() {
+      const allWays = getPendingAllWays();
+      document.getElementById('status-box').innerHTML =
+        `OSM Ways: <b>${baseNetwork.ways.length}</b> | Titik Aktif: <b>${currentPoints.length}</b> | Jalur Baru Siap: <b>${allWays.length}</b>`;
+      document.getElementById('json-preview').value = JSON.stringify({
+        new_ways: allWays,
+        new_nodes: draftNodes
+      }, null, 2);
+    }
+
+    function copyPatch() {
+      const txt = document.getElementById('json-preview').value;
+      navigator.clipboard.writeText(txt).then(() => alert('JSON tambahan berhasil disalin!'));
+    }
+
+    function downloadMergedJson() {
+      if (!baseNetwork) return;
+      const allWays = getPendingAllWays();
+      if (allWays.length === 0) {
+        alert('Gambar minimal 1 jalur baru (minimal 2 titik) terlebih dahulu.');
+        return;
+      }
+      const merged = {
+        bounds: baseNetwork.bounds,
+        ways: [...baseNetwork.ways, ...allWays],
+        nodes: { ...baseNetwork.nodes, ...draftNodes }
+      };
+      const blob = new Blob([JSON.stringify(merged)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'walkable_network.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    loadNetwork();
+  </script>
+</body>
+</html>

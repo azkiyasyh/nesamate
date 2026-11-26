@@ -636,13 +636,17 @@ class NesaMapManager {
 
   async loadWalkableNetwork() {
     try {
-      const res = await fetch('/assets/walkable_network.json');
+      const res = await fetch('/assets/walkable_network.json?v=2.4.8', { cache: 'no-store' });
       if (!res.ok) return;
       const net = await res.json();
       const nodes = net.nodes || {};
       const adj = {};
+      const customWays = [];
       (net.ways || []).forEach(way => {
         const wNodes = way.nodes || [];
+        if (Number(way.id) >= 1561513534) {
+          customWays.push(wNodes);
+        }
         for (let i = 0; i < wNodes.length - 1; i++) {
           const u = String(wNodes[i]);
           const v = String(wNodes[i + 1]);
@@ -656,6 +660,18 @@ class NesaMapManager {
       });
       this.walkNodes = nodes;
       this.walkAdj = adj;
+      if (this.map && customWays.length > 0) {
+        if (this.customFootpathLayer) {
+          this.map.removeLayer(this.customFootpathLayer);
+        }
+        const lines = customWays.map(wNodes => {
+          const pts = wNodes.map(id => nodes[String(id)]).filter(Boolean).map(n => [n.lat, n.lon]);
+          return pts.length > 1
+            ? L.polyline(pts, { color: '#e07a5f', weight: 2.5, opacity: 0.88, dashArray: '4, 6' })
+            : null;
+        }).filter(Boolean);
+        this.customFootpathLayer = L.layerGroup(lines).addTo(this.map);
+      }
       console.log(`[NesaMate Map] Walkable OSM network loaded: ${Object.keys(adj).length} connected nodes`);
     } catch (e) {
       console.warn('[NesaMate Map] Gagal memuat walkable_network.json:', e);
