@@ -212,7 +212,8 @@ class NesaMapManager {
   }
 
   /**
-   * Render semua titik POI (Spot Hutan Kota UNESA, Musholla, Parkiran, Toilet)
+   * Render semua titik POI berdasarkan dataset resmi (NESA_DATA.spots / spots.json)
+   * serta Gerbang Masuk agar koordinat peta 2D akurat sesuai dataset.
    */
   renderAllPOIs() {
     this.layers.hutan.clearLayers();
@@ -227,83 +228,41 @@ class NesaMapManager {
       this.spotMarkers[String(id).toUpperCase()] = marker;
     };
 
-    // 1. Spot Hutan Kota UNESA
-    (NESA_DATA.poi.hutan || []).forEach(item => {
-      const icon = this.createPinIcon('hutan', item.icon);
-      const marker = L.marker([item.lat, item.lng], { icon });
-      marker.bindPopup(`
-        <div class="map-popup-card">
-          <span class="popup-tag-forest">🌲 Spot Hutan Kota UNESA</span>
-          <h4 class="popup-title">${item.name}</h4>
-          <p class="popup-desc">${item.desc}</p>
-          <div class="popup-badge">${item.highlight || 'Hutan Konservasi'}</div>
-          <button class="popup-nav-btn" onclick="window.nesaApp.routeToPoint(${item.lat}, ${item.lng}, '${item.name.replace(/'/g, "\\'")}')">
-            🧭 Petunjuk Arah
-          </button>
-        </div>
-      `);
-      this.layers.hutan.addLayer(marker);
-      registerMarker(item.id, marker);
-    });
+    // 1. Render 30 Spot Resmi dari Dataset (NESA_DATA.spots / spots.json)
+    if (NESA_DATA.spots && Array.isArray(NESA_DATA.spots)) {
+      NESA_DATA.spots.forEach(item => {
+        const cat = (item.category || '').toLowerCase();
+        let targetLayer = this.layers.hutan;
+        let pinType = cat || 'hutan';
 
-    // 2. Musholla
-    (NESA_DATA.poi.musholla || []).forEach(item => {
-      const icon = this.createPinIcon('musholla', item.icon);
-      const marker = L.marker([item.lat, item.lng], { icon });
-      marker.bindPopup(`
-        <div class="map-popup-card">
-          <span class="popup-tag-musholla">🕌 Fasilitas Ibadah</span>
-          <h4 class="popup-title">${item.name}</h4>
-          <p class="popup-desc">${item.desc}</p>
-          <div class="popup-badge">${item.highlight || 'Fasilitas Ibadah'}</div>
-          <button class="popup-nav-btn" onclick="window.nesaApp.routeToPoint(${item.lat}, ${item.lng}, '${item.name.replace(/'/g, "\\'")}')">
-            🧭 Petunjuk Arah
-          </button>
-        </div>
-      `);
-      this.layers.musholla.addLayer(marker);
-      registerMarker(item.id, marker);
-    });
+        if (cat === 'musholla') {
+          targetLayer = this.layers.musholla;
+        } else if (cat === 'parkiran') {
+          targetLayer = this.layers.parkiran;
+        } else if (cat === 'toilet') {
+          targetLayer = this.layers.toilet;
+        } else if (cat === 'gerbang') {
+          targetLayer = this.layers.gerbang;
+        }
 
-    // 3. Parkiran
-    (NESA_DATA.poi.parkiran || []).forEach(item => {
-      const icon = this.createPinIcon('parkiran', item.icon);
-      const marker = L.marker([item.lat, item.lng], { icon });
-      marker.bindPopup(`
-        <div class="map-popup-card">
-          <span class="popup-tag-sage">🅿️ Area Parkir UNESA</span>
-          <h4 class="popup-title">${item.name}</h4>
-          <p class="popup-desc">${item.desc}</p>
-          <div class="popup-badge">${item.highlight || 'Area Parkir'}</div>
-          <button class="popup-nav-btn" onclick="window.nesaApp.routeToPoint(${item.lat}, ${item.lng}, '${item.name.replace(/'/g, "\\'")}')">
-            🧭 Petunjuk Arah
-          </button>
-        </div>
-      `);
-      this.layers.parkiran.addLayer(marker);
-      registerMarker(item.id, marker);
-    });
+        const icon = this.createPinIcon(pinType, item.icon);
+        const marker = L.marker([item.lat, item.lng], { icon });
+        marker.bindPopup(`
+          <div class="map-popup-card">
+            <span class="popup-tag-forest">${item.tag || '🌿 Spot Hutan UNESA'}</span>
+            <h4 class="popup-title">${item.name}</h4>
+            <p class="popup-desc">${item.desc}</p>
+            <button class="popup-nav-btn" onclick="window.nesaApp.routeToPoint(${item.lat}, ${item.lng}, '${item.name.replace(/'/g, "\\'")}')">
+              🧭 Petunjuk Arah
+            </button>
+          </div>
+        `);
+        targetLayer.addLayer(marker);
+        registerMarker(item.id, marker);
+      });
+    }
 
-    // 4. Toilet
-    (NESA_DATA.poi.toilet || []).forEach(item => {
-      const icon = this.createPinIcon('toilet', item.icon);
-      const marker = L.marker([item.lat, item.lng], { icon });
-      marker.bindPopup(`
-        <div class="map-popup-card">
-          <span class="popup-tag-sage">🚻 Fasilitas Sanitasi</span>
-          <h4 class="popup-title">${item.name}</h4>
-          <p class="popup-desc">${item.desc}</p>
-          <div class="popup-badge">${item.highlight || 'Toilet'}</div>
-          <button class="popup-nav-btn" onclick="window.nesaApp.routeToPoint(${item.lat}, ${item.lng}, '${item.name.replace(/'/g, "\\'")}')">
-            🧭 Petunjuk Arah
-          </button>
-        </div>
-      `);
-      this.layers.toilet.addLayer(marker);
-      registerMarker(item.id, marker);
-    });
-
-    // 5. Gerbang Masuk
+    // 2. Render Gerbang Masuk (tidak ada di spots.json)
     (NESA_DATA.poi.gerbang || []).forEach(item => {
       const icon = this.createPinIcon('gerbang', item.icon);
       const marker = L.marker([item.lat, item.lng], { icon });
@@ -321,26 +280,6 @@ class NesaMapManager {
       this.layers.gerbang.addLayer(marker);
       registerMarker(item.id, marker);
     });
-
-    // 6. 20 Spot Resmi Hutan & Kampus (Kandang Hewan, Danau, Gazebo, Fasilitas)
-    if (NESA_DATA.spots && Array.isArray(NESA_DATA.spots)) {
-      NESA_DATA.spots.forEach(item => {
-        const icon = this.createPinIcon(item.category, item.icon);
-        const marker = L.marker([item.lat, item.lng], { icon });
-        marker.bindPopup(`
-          <div class="map-popup-card">
-            <span class="popup-tag-forest">${item.tag || '🌿 Spot Hutan UNESA'}</span>
-            <h4 class="popup-title">${item.name}</h4>
-            <p class="popup-desc">${item.desc}</p>
-            <button class="popup-nav-btn" onclick="window.nesaApp.routeToPoint(${item.lat}, ${item.lng}, '${item.name.replace(/'/g, "\\'")}')">
-              🧭 Petunjuk Arah
-            </button>
-          </div>
-        `);
-        this.layers.hutan.addLayer(marker);
-        registerMarker(item.id, marker);
-      });
-    }
   }
 
   /**
@@ -543,6 +482,11 @@ class NesaMapManager {
 
     // Sinkronisasi navigasi & jarak rute secara real-time
     this.updateActiveNavigationProgress(lat, lng);
+
+    // Sinkronisasi posisi GPS pengguna ke peta 3D jika tersedia
+    if (window.nesa3DMap && typeof window.nesa3DMap.updateUserLocation === 'function') {
+      window.nesa3DMap.updateUserLocation(lat, lng);
+    }
   }
 
   /**
@@ -608,6 +552,7 @@ class NesaMapManager {
     const start = L.latLng(lat, lng);
     const end = L.latLng(targetLat, targetLng);
     const newWaypoints = this.generateCampusWaypoints(start, end);
+    this.activeRoute.waypoints = newWaypoints;
 
     if (Array.isArray(this.routeLayers) && this.routeLayers.length > 0) {
       this.routeLayers.forEach(layer => {
@@ -615,6 +560,10 @@ class NesaMapManager {
           layer.setLatLngs(newWaypoints);
         }
       });
+    }
+
+    if (window.nesa3DMap && window.nesa3DMap.isLoaded && window.nesa3DMap.isActive) {
+      window.nesa3DMap.drawRouteFromGPS(newWaypoints, destName, true);
     }
   }
 
@@ -1041,7 +990,8 @@ class NesaMapManager {
       destinationName,
       distMeters: finalDistMeters,
       estMinutes: finalEstMinutes,
-      turnHint
+      turnHint,
+      waypoints: routeWaypoints
     };
 
     // Fit view peta secara proporsional dengan padding asimetris

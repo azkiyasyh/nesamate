@@ -19,8 +19,16 @@
   <!-- Leaflet Routing Machine CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
 
+  <!-- Three.js Digital Twin Engine & GLTF / OrbitControls Loaders -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
   <!-- Custom CSS Design System (Anti-Bertumpuk & Safari Natural) -->
   <link rel="stylesheet" href="css/style.css?v=2.4.5">
+
+  <!-- 3D Digital Twin Map Styles -->
+  <link rel="stylesheet" href="css/map3d.css?v=1.0.0">
 
   <!-- Cubism Core & PixiJS v6.5.8 -->
   <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
@@ -98,15 +106,37 @@
          LAYAR 3: FREE MODE (MODE EKSPLORASI BEBAS & MAPS)
          ======================================================== -->
     <section id="screen-free-mode" class="screen-view free-mode-screen">
-      <!-- Fullscreen Leaflet Map -->
+      <!-- Fullscreen Leaflet Map (Map 2D) -->
       <div id="free-map-container" class="map-fullscreen-container"></div>
+
+      <!-- Fullscreen Three.js Digital Twin Map (Map 3D) -->
+      <div id="free-map-3d-container" class="map-fullscreen-container map-3d-container" style="display: none;"></div>
+
+      <!-- Floating 3D Map Quick Controls (Muncul saat Mode 3D aktif) -->
+      <div id="map-3d-quick-controls" class="map-3d-quick-controls" style="display: none;">
+        <button id="btn-3d-reset-view" class="pill-btn-3d-action" title="Reset Sudut Pandang Kamera">
+          <span>🎯</span> Reset Kamera
+        </button>
+        <div class="route-select-3d-wrap">
+          <select id="select-3d-route" class="select-3d-route" title="Pilih Jalur Penunjuk Jalan 3D">
+            <option value="hutan-loop">🌲 Rute Konservasi Hutan</option>
+            <option value="danau-loop">💧 Rute Tepi Danau</option>
+            <option value="trekking-rimbun">🥾 Rute Trekking & Shelter</option>
+          </select>
+        </div>
+      </div>
 
       <!-- Top Bar Minimalis & Filter POI (Unified Card Glassmorphism) -->
       <header class="free-top-bar">
         <div class="free-nav-header-card">
           <div class="top-bar-row">
             <button id="btn-free-back" class="btn-icon-back" title="Kembali ke Pilihan Mode">←</button>
-            <div class="title-pill-badge">🌿 Hutan Kota UNESA</div>
+            <div class="title-pill-badge">🌿 Hutan UNESA</div>
+            <!-- Toggle Pemilihan Map 2D dan 3D -->
+            <div class="map-view-toggle-pill" id="map-view-toggle">
+              <button id="btn-view-2d" class="toggle-pill-btn is-active" title="Tampilan Peta 2D">2D</button>
+              <button id="btn-view-3d" class="toggle-pill-btn" title="Tampilan Digital Twin 3D">3D</button>
+            </div>
             <button id="btn-free-recenter" class="btn-icon-back" title="Pusatkan ke Kampus">📍</button>
           </div>
 
@@ -387,8 +417,10 @@
   <!-- Modular Scripts -->
   <script src="js/data.js?v=2.4.0"></script>
   <script src="js/speech.js?v=2.4.1"></script>
-  <script src="js/map.js?v=2.4.6"></script>
-  <script src="js/app.js?v=2.4.7"></script>
+  <script src="js/road_nav.js?v=2.1.0"></script>
+  <script src="js/map.js?v=2.4.7"></script>
+  <script src="js/map3d.js?v=1.0.2"></script>
+  <script src="js/app.js?v=2.5.0"></script>
 
 </body>
 </html>

@@ -333,6 +333,7 @@ class NesaApp {
     this.sessionId = localStorage.getItem('nesamate_session_id') || '';
     this.currentScreen = 'screen-landing';
     this.activeMapMode = null; // 'free' | 'challenge' | 'jogging'
+    this.currentMapView = '2d'; // '2d' | '3d' — Mode tampilan peta di Free Mode
     this.routeRequestId = 0;
 
     // Challenge Mode State
@@ -422,9 +423,23 @@ class NesaApp {
       if (window.nesaMap) {
         window.nesaMap.clearJoggingTrack();
       }
+      // Pastikan tampilan 3D berhenti jika screen meninggalkan free mode sebelumnya
+      if (window.nesa3DMap && this.currentMapView !== '2d') {
+        // Jangan ubah mode — user mungkin sengaja di 3D
+      }
+      // Jika sebelumnya di mode 3D namun baru pertama kali masuk, default ke 2D
+      if (!this.currentMapView) {
+        this.currentMapView = '2d';
+      }
       setTimeout(() => {
-        nesaMap.initMap('free-map-container');
-        if (nesaMap.map) nesaMap.map.invalidateSize();
+        // Hanya init Leaflet jika tampilan aktif adalah 2D
+        if (this.currentMapView === '2d') {
+          nesaMap.initMap('free-map-container');
+          if (nesaMap.map) nesaMap.map.invalidateSize();
+        } else if (this.currentMapView === '3d') {
+          // Re-trigger render loop 3D saat kembali ke layar
+          if (window.nesa3DMap) window.nesa3DMap.show();
+        }
       }, 150);
     } else if (screenId === 'screen-challenge-mode') {
       if (window.nesaMap) {
@@ -605,8 +620,13 @@ class NesaApp {
     const btnFreeRecenter = document.getElementById('btn-free-recenter');
     if (btnFreeRecenter) {
       btnFreeRecenter.addEventListener('click', () => {
-        nesaMap.recenterCampus();
-        this.showToast('📍 Menampilkan kawasan Hutan UNESA');
+        if (this.currentMapView === '3d' && window.nesa3DMap) {
+          window.nesa3DMap.focusOnUser();
+          this.showToast('📍 Memfokuskan 3D ke posisi GPS Anda');
+        } else {
+          nesaMap.recenterCampus();
+          this.showToast('📍 Menampilkan kawasan Hutan UNESA');
+        }
       });
     }
 
@@ -659,10 +679,52 @@ class NesaApp {
     if (btnCancelNav) {
       btnCancelNav.addEventListener('click', () => {
         if (window.nesaMap) window.nesaMap.clearRoute();
+        // Juga bersihkan rute di tampilan 3D jika aktif
+        if (window.nesa3DMap && this.currentMapView === '3d') window.nesa3DMap.clearRoute();
         const navCard = document.getElementById('free-nav-active-card');
         if (navCard) navCard.classList.remove('is-active');
         this.setAvatarState('pip');
         this.showToast('🧭 Navigasi rute ditutup');
+      });
+    }
+
+    // -----------------------------------------------------------------
+    // MAP VIEW TOGGLE: 2D ↔ 3D (Tombol Toggle di Top Bar Free Mode)
+    // -----------------------------------------------------------------
+    const btn2D = document.getElementById('btn-view-2d');
+    const btn3D = document.getElementById('btn-view-3d');
+
+    if (btn2D) {
+      btn2D.addEventListener('click', () => {
+        this.setMapViewMode('2d');
+      });
+    }
+
+    if (btn3D) {
+      btn3D.addEventListener('click', () => {
+        this.setMapViewMode('3d');
+      });
+    }
+
+    // 3D Quick Controls
+    const btnResetView = document.getElementById('btn-3d-reset-view');
+    if (btnResetView) {
+      btnResetView.addEventListener('click', () => {
+        if (window.nesa3DMap) {
+          window.nesa3DMap.resetView();
+          this.showToast('🎯 Sudut pandang kamera direset');
+        }
+      });
+    }
+
+    const selectRoute = document.getElementById('select-3d-route');
+    if (selectRoute) {
+      selectRoute.addEventListener('change', (e) => {
+        const val = e.target.value;
+        if (window.nesa3DMap) {
+          window.nesa3DMap.setScenicRoute(val);
+          this.showToast(`🗺️ Jalur "${e.target.options[e.target.selectedIndex].text}" diaktifkan`);
+        }
       });
     }
 
@@ -1287,6 +1349,91 @@ class NesaApp {
     }
   }
 
+  // ================================================================
+  // KONTROL TAMPILAN 2D / 3D DIGITAL TWIN MAP (Free Mode only)
+  // ================================================================
+
+  /**
+   * Beralih antara tampilan peta 2D (Leaflet) dan 3D (Three.js Digital Twin).
+   * Menyembunyikan tampilan sebelumnya tanpa reload atau kehilangan state.
+   * @param {'2d'|'3d'} mode
+   */
+  setMapViewMode(mode) {
+    this.currentMapView = mode;
+
+    const container2D = document.getElementById('free-map-container');
+    const container3D = document.getElementById('free-map-3d-container');
+    const btn2D = document.getElementById('btn-view-2d');
+    const btn3D = document.getElementById('btn-view-3d');
+    const quickControls = document.getElementById('map-3d-quick-controls');
+    const poiFilterWrap = document.querySelector('.poi-filter-scroll-wrapper');
+    const recenterBtn = document.getElementById('btn-free-recenter');
+
+    if (mode === '3d') {
+      // ───── Aktifkan 3D, Sembunyikan 2D ─────
+      if (container2D) container2D.style.display = 'none';
+      if (container3D) container3D.style.display = 'block';
+      if (quickControls) quickControls.style.display = 'flex';
+      // Sembunyikan filter POI yang khusus 2D
+      if (poiFilterWrap) poiFilterWrap.style.display = 'none';
+      if (recenterBtn) recenterBtn.style.display = '';
+
+      // Update status tombol toggle
+      if (btn2D) { btn2D.classList.remove('is-active'); }
+      if (btn3D) { btn3D.classList.add('is-active'); }
+
+      // Inisialisasi atau tampilkan kembali 3D map
+      if (window.nesa3DMap) {
+        // Hanya init jika belum pernah — renderer dipertahankan antar pergantian tampilan
+        if (!window.nesa3DMap.renderer) {
+          window.nesa3DMap.init('free-map-3d-container');
+        } else {
+          window.nesa3DMap.show();
+        }
+      }
+
+      this.showToast('🌐 Tampilan Digital Twin 3D aktif');
+
+    } else {
+      // ───── Aktifkan 2D, Sembunyikan 3D ─────
+      if (container2D) container2D.style.display = 'block';
+      if (container3D) container3D.style.display = 'none';
+      if (quickControls) quickControls.style.display = 'none';
+      if (poiFilterWrap) poiFilterWrap.style.display = 'block';
+      if (recenterBtn) recenterBtn.style.display = '';
+
+      // Update status tombol toggle
+      if (btn2D) { btn2D.classList.add('is-active'); }
+      if (btn3D) { btn3D.classList.remove('is-active'); }
+
+      // Hentikan render loop 3D saat tidak dipakai
+      if (window.nesa3DMap) {
+        window.nesa3DMap.hide();
+      }
+
+      // Pastikan Leaflet menyesuaikan ukuran setelah container kembali terlihat
+      if (window.nesaMap && window.nesaMap.map) {
+        setTimeout(() => {
+          window.nesaMap.map.invalidateSize();
+        }, 100);
+      }
+
+      this.showToast('📍 Tampilan Peta 2D aktif');
+    }
+  }
+
+  /**
+   * Menampilkan kartu navigasi floating di UI (digunakan oleh map3d.js)
+   */
+  showActiveNavCard(destinationName, distanceText) {
+    const navCard = document.getElementById('free-nav-active-card');
+    const destNameEl = document.getElementById('free-nav-dest-name');
+    const distEl = document.getElementById('free-nav-dest-distance');
+    if (navCard) navCard.classList.add('is-active');
+    if (destNameEl) destNameEl.textContent = destinationName;
+    if (distEl && distanceText) distEl.textContent = distanceText;
+  }
+
   /**
    * Navigasi langsung ke titik POI di peta
    */
@@ -1308,6 +1455,15 @@ class NesaApp {
         }
         const activeRoute = window.nesaMap.drawRouteTo(lat, lng, name);
         this.showNavigationFloatingCard(name, activeRoute);
+      }
+      // Sinkronisasi rute ke tampilan 3D jika model sudah dimuat (ikuti waypoints peta 2D 1:1)
+      if (window.nesa3DMap && window.nesa3DMap.isLoaded) {
+        const activeRoute = window.nesaMap?.activeRoute;
+        if (activeRoute && Array.isArray(activeRoute.waypoints) && activeRoute.waypoints.length > 1) {
+          window.nesa3DMap.drawRouteFromGPS(activeRoute.waypoints, name, true);
+        } else if (window.nesaMap?.userCoordinates) {
+          window.nesa3DMap.drawRouteFromGPS([window.nesaMap.userCoordinates, [lat, lng]], name, false);
+        }
       }
     };
 
