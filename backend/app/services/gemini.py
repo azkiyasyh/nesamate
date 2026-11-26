@@ -22,13 +22,20 @@ class GeminiService:
         self.model_name = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest").strip() or "gemini-flash-lite-latest"
         self._load_system_prompt()
         self.client = None
+        self.init_error: Optional[str] = None
+        self.last_error: Optional[str] = None
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
 
-        if self.api_key and not self.api_key.startswith("your_"):
+        if not self.api_key:
+            self.init_error = "GEMINI_API_KEY tidak ditemukan di environment"
+        elif self.api_key.startswith("your_"):
+            self.init_error = "GEMINI_API_KEY masih menggunakan placeholder"
+        else:
             try:
                 from google import genai
                 self.client = genai.Client(api_key=self.api_key)
             except Exception as e:
+                self.init_error = str(e)
                 print(f"[GeminiService] Gagal inisialisasi Gemini Client: {e}")
                 self.client = None
 
@@ -123,6 +130,7 @@ class GeminiService:
             except Exception as err:
                 last_err = err
                 err_msg = repr(err) if not str(err) else str(err)
+                self.last_error = f"{model_id}: {err_msg}"
                 print(f"[GeminiService] Model {model_id} gagal ({err_msg}), mencoba cadangan berikutnya...", flush=True)
 
         print(f"[GeminiService] Semua model gagal, fallback lokal aktif (last error: {last_err})")
@@ -208,6 +216,7 @@ class GeminiService:
                 return
             except Exception as err:
                 err_msg = repr(err) if not str(err) else str(err)
+                self.last_error = f"stream {model_id}: {err_msg}"
                 print(f"[GeminiService] Stream {model_id} gagal ({err_msg})", flush=True)
 
         yield {"type": "done", "data": self._smart_fallback(user_name, clean_input, location_block, context_block, mode)}

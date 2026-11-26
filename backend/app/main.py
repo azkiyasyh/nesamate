@@ -49,7 +49,20 @@ app.include_router(data_router)
 
 @app.get("/api/health")
 def health_check():
-    return {"status": "ok", "app": "NesaMate", "version": "2.0.0"}
+    try:
+        from backend.app.services.gemini import gemini_service
+    except ImportError:
+        from app.services.gemini import gemini_service
+    return {
+        "status": "ok",
+        "app": "NesaMate",
+        "version": "2.0.0",
+        "gemini_ready": gemini_service.client is not None,
+        "gemini_model": gemini_service.model_name,
+        "has_api_key": bool(gemini_service.api_key),
+        "init_error": gemini_service.init_error,
+        "last_error": gemini_service.last_error,
+    }
 
 
 # Mount frontend statis untuk pengetesan lokal (setelah API router)
