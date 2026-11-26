@@ -185,14 +185,16 @@ class NesaVoiceAssistant {
       }
     };
 
-    // Watchdog pengaman mengatasi bug Chrome di mana event onend tidak terpanggil
-    const estimatedSec = Math.max(3, Math.ceil(cleanText.length / 9) + 2);
-    this.speakingWatchdog = setTimeout(() => {
-      if (this.isSpeaking && reqId === this.speechRequestId) {
-        console.log('[NesaMate Voice] Watchdog: menyelesaikan status TTS otomatis');
-        finishSpeech();
-      }
-    }, estimatedSec * 1000);
+    const estimatedSec = Math.max(4, Math.ceil(cleanText.length / 8) + 3);
+    const armWatchdog = (seconds) => {
+      this.clearSpeakingWatchdog();
+      this.speakingWatchdog = setTimeout(() => {
+        if (this.isSpeaking && reqId === this.speechRequestId) {
+          console.log('[NesaMate Voice] Watchdog: menyelesaikan status TTS otomatis');
+          finishSpeech();
+        }
+      }, seconds * 1000);
+    };
 
     const speakWithBrowser = (reason = '') => {
       if (reqId !== this.speechRequestId) return;
@@ -201,6 +203,8 @@ class NesaVoiceAssistant {
         if (this.synth.speaking) {
           this.synth.cancel();
         }
+        // Watchdog dimulai saat browser benar-benar mulai menyuarakan utterance
+        armWatchdog(estimatedSec);
         this.synth.speak(utterance);
       } catch (err) {
         console.warn('[NesaMate Voice] Gagal speak:', err);
@@ -213,6 +217,9 @@ class NesaVoiceAssistant {
 
     this.currentAbortController = new AbortController();
     const signal = this.currentAbortController.signal;
+
+    // Watchdog khusus fetch agar tidak menggantung selamanya jika server lambat/offline
+    armWatchdog(15);
 
     fetch('/api/tts', {
       method: 'POST',
@@ -249,9 +256,19 @@ class NesaVoiceAssistant {
             }
             console.log('[NesaMate Voice] Memutar audio server:', previewUrl);
             this.isSpeaking = true;
+            // Reset watchdog berdasarkan durasi audio aktual agar mic tidak menyala sebelum audio selesai
+            const audioSec = Number.isFinite(audio.duration) && audio.duration > 0
+              ? Math.ceil(audio.duration) + 2
+              : estimatedSec;
+            armWatchdog(audioSec);
             startLipSync();
             if (this.onSpeakingStateChange) this.onSpeakingStateChange(true);
             if (onStartCallback) onStartCallback();
+          };
+          audio.onloadedmetadata = () => {
+            if (reqId === this.speechRequestId && this.currentAudio === audio && !audio.paused && Number.isFinite(audio.duration) && audio.duration > 0) {
+              armWatchdog(Math.ceil(audio.duration) + 2);
+            }
           };
           audio.onended = () => {
             if (this.currentAudio === audio) {

@@ -13,28 +13,28 @@ window.API_BASE_URL = API_BASE_URL;
 
 const CHALLENGE_ROUTE_GUIDES = {
   1: {
-    guide: 'Arahkan langkahmu ke area Plaza depan Gedung Rektorat UNESA. Cari tim penjaga yang membawa sensor mikroklimat udara di pelataran utama.',
-    shortHint: 'Plaza Depan Gedung Rektorat'
+    guide: 'Arahkan langkahmu ke stan Pixora di kawasan Hutan UNESA. Coba transformasi potret wajah AI dan minta kata kunci dari tim penjaga.',
+    shortHint: 'Stan Projek TRM Pixora'
   },
   2: {
-    guide: 'Berjalanlah ke arah selatan menuju tepian Danau UNESA. Di dekat dermaga danau, temui tim penguji ekosistem air.',
-    shortHint: 'Dermaga Danau UNESA'
+    guide: 'Berjalanlah menuju stan BIOVA di kawasan Hutan UNESA. Temui tim penjaga untuk menyelesaikan tantangan dan mendapatkan kata kunci.',
+    shortHint: 'Stan Projek TRM BIOVA'
   },
   3: {
-    guide: 'Menujulah ke sisi barat kampus di Pintu Masuk Hutan UNESA. Di sana kamu akan menemukan gerbang rimbun dan pohon Trembesi tertua bersama pemandu rimba.',
-    shortHint: 'Pintu Masuk Barat Hutan UNESA'
+    guide: 'Menujulah ke stan Wildex di Hutan UNESA. Coba Mode Explore atau Mode Quest pendeteksi satwa bersama tim penjaga.',
+    shortHint: 'Stan Projek TRM Wildex'
   },
   4: {
-    guide: 'Masuklah ke jalur setapak hutan menuju Pusat Observasi Flora dan Burung. Dengarkan kicauan satwa alami di bawah kanopi rindang.',
-    shortHint: 'Observasi Flora & Satwa'
+    guide: 'Arahkan langkahmu ke stan BioSphere di Hutan UNESA. Amati data sensor IoT suhu, kelembapan, dan pH air bersama tim.',
+    shortHint: 'Stan Projek TRM BioSphere'
   },
   5: {
-    guide: 'Ambil jalur setapak melintasi pepohonan menuju Shelter Jagawana. Cari tempat pilah botol otomatis untuk tantangan Zero Waste.',
-    shortHint: 'Shelter Peristirahatan Jagawana'
+    guide: 'Berjalanlah ke stan Animora di Hutan UNESA. Pindai kartu hewan AR 3D dan jawab kuisnya untuk meraih kata kunci.',
+    shortHint: 'Stan Projek TRM Animora'
   },
   6: {
-    guide: 'Arahkan langkahmu ke kompleks Gelora Kampus Hijau di sisi utara kampus. Di sana ada ubin konversi energi kinetik ramah lingkungan.',
-    shortHint: 'Kompleks Gelora UNESA'
+    guide: 'Arahkan langkahmu ke stan SmartPark Vision di sisi utara Hutan Kota Unesa. Lihat live feed deteksi aktivitas YOLOv8 bersama tim.',
+    shortHint: 'Stan Projek TRM SmartPark Vision'
   }
 };
 
@@ -1372,27 +1372,27 @@ class NesaApp {
     }
 
     // Navigasi Pos di Mode Berpetualang
-    if (text.includes('pos 1') || text.includes('pos satu') || text.includes('rektorat')) {
+    if (text.includes('pos 1') || text.includes('pos satu') || text.includes('pixora')) {
       if (this.currentScreen !== 'screen-challenge-mode') this.showScreen('screen-challenge-mode');
       this.selectStartingPos(1);
       return;
-    } else if (text.includes('pos 2') || text.includes('pos dua') || text.includes('danau')) {
+    } else if (text.includes('pos 2') || text.includes('pos dua') || text.includes('biova')) {
       if (this.currentScreen !== 'screen-challenge-mode') this.showScreen('screen-challenge-mode');
       this.selectStartingPos(2);
       return;
-    } else if (text.includes('pos 3') || text.includes('pos tiga')) {
+    } else if (text.includes('pos 3') || text.includes('pos tiga') || text.includes('wildex')) {
       if (this.currentScreen !== 'screen-challenge-mode') this.showScreen('screen-challenge-mode');
       this.selectStartingPos(3);
       return;
-    } else if (text.includes('pos 4') || text.includes('pos empat')) {
+    } else if (text.includes('pos 4') || text.includes('pos empat') || text.includes('biosphere')) {
       if (this.currentScreen !== 'screen-challenge-mode') this.showScreen('screen-challenge-mode');
       this.selectStartingPos(4);
       return;
-    } else if (text.includes('pos 5') || text.includes('pos lima')) {
+    } else if (text.includes('pos 5') || text.includes('pos lima') || text.includes('animora')) {
       if (this.currentScreen !== 'screen-challenge-mode') this.showScreen('screen-challenge-mode');
       this.selectStartingPos(5);
       return;
-    } else if (text.includes('pos 6') || text.includes('pos enam') || text.includes('gelora')) {
+    } else if (text.includes('pos 6') || text.includes('pos enam') || text.includes('smartpark')) {
       if (this.currentScreen !== 'screen-challenge-mode') this.showScreen('screen-challenge-mode');
       this.selectStartingPos(6);
       return;

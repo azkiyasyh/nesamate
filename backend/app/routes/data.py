@@ -6,7 +6,7 @@ router = APIRouter(prefix="/api", tags=["Data"])
 
 @router.get("/spots")
 def get_spots():
-    """Mengembalikan daftar 20 titik spot dan fasilitas Hutan UNESA."""
+    """Mengembalikan daftar 30 titik spot dan fasilitas Hutan UNESA."""
     return {"spots": rag_service.spots, "total": len(rag_service.spots)}
 
 

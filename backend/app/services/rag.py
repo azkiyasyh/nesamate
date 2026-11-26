@@ -164,7 +164,7 @@ class RAGService:
             context_block = (
                 "<konteks>\n"
                 "[1] Nesa adalah AI pemandu wisata virtual resmi di kawasan Hutan UNESA Lidah Wetan, Surabaya.\n"
-                "[2] Nesa dapat memberikan panduan rute 20 spot dan fasilitas, informasi 8 jenis satwa konservasi, dan memandu 6 pos tantangan petualangan.\n"
+                "[2] Nesa dapat memberikan panduan rute 30 spot dan fasilitas, informasi 8 jenis satwa konservasi, dan memandu 6 pos tantangan petualangan.\n"
                 "</konteks>"
             )
             return location_block, context_block

@@ -19,7 +19,7 @@ if not PROMPT_FILE.exists():
 class GeminiService:
     def __init__(self):
         self.api_key = os.getenv("GEMINI_API_KEY", "").strip()
-        self.model_name = os.getenv("GEMINI_MODEL", "gemini-3.8-flash-lite")
+        self.model_name = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest").strip() or "gemini-flash-lite-latest"
         self._load_system_prompt()
         self.client = None
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
@@ -87,7 +87,7 @@ class GeminiService:
         )
 
         candidate_models = []
-        for m in (self.model_name, "gemini-3.1-flash-lite", "gemini-flash-lite-latest"):
+        for m in (self.model_name, "gemini-flash-lite-latest", "gemini-2.5-flash-lite"):
             if m and m not in candidate_models:
                 candidate_models.append(m)
 
@@ -116,7 +116,10 @@ class GeminiService:
                 text = response.text.strip()
                 if model_id != self.model_name:
                     print(f"[GeminiService] Berhasil memakai model cadangan: {model_id}", flush=True)
-                return self._parse_json_response(text, user_name, clean_input)
+                return self._parse_json_response(
+                    text, user_name, clean_input,
+                    fallback_args=(location_block, context_block, mode)
+                )
             except Exception as err:
                 last_err = err
                 err_msg = repr(err) if not str(err) else str(err)
@@ -165,7 +168,7 @@ class GeminiService:
         )
 
         candidate_models = []
-        for m in (self.model_name, "gemini-3.1-flash-lite", "gemini-flash-lite-latest"):
+        for m in (self.model_name, "gemini-flash-lite-latest", "gemini-2.5-flash-lite"):
             if m and m not in candidate_models:
                 candidate_models.append(m)
 
@@ -182,7 +185,7 @@ class GeminiService:
                     config={
                         "response_mime_type": "application/json",
                         "temperature": 0.4,
-                        "max_output_tokens": 512,
+                        "max_output_tokens": 1024,
                     }
                 )
                 for chunk in stream:
@@ -197,7 +200,10 @@ class GeminiService:
                                 last_sent_speech = partial
                                 yield {"type": "chunk", "speech": partial}
 
-                parsed = self._parse_json_response(raw_buf.strip(), user_name, clean_input)
+                parsed = self._parse_json_response(
+                    raw_buf.strip(), user_name, clean_input,
+                    fallback_args=(location_block, context_block, mode)
+                )
                 yield {"type": "done", "data": parsed}
                 return
             except Exception as err:
@@ -346,11 +352,31 @@ class GeminiService:
             print(f"[EdgeTTS] Error fallback: {e2}", flush=True)
             return None
 
-    def _parse_json_response(self, text: str, user_name: str, query: str = "") -> Dict[str, Any]:
+    def _parse_json_response(
+        self,
+        text: str,
+        user_name: str,
+        query: str = "",
+        fallback_args: Optional[tuple] = None
+    ) -> Dict[str, Any]:
         """Validasi dan sanitasi output JSON sesuai PRD 12.6."""
         # Bersihkan markdown formatting jika masih ada ```json
         cleaned = re.sub(r"^```json\s*", "", text, flags=re.MULTILINE)
         cleaned = re.sub(r"```$", "", cleaned, flags=re.MULTILINE).strip()
+
+        def _normalize_action(raw_action: str) -> str:
+            valid_actions = [
+                "none", "show_map", "show_spot_detail", "navigate_to_spot", "show_chart",
+                "start_challenge", "open_free_mode"
+            ]
+            if raw_action not in valid_actions:
+                return "none"
+            if self._is_route_query(query):
+                if raw_action == "show_spot_detail":
+                    return "navigate_to_spot"
+            elif raw_action == "navigate_to_spot":
+                return "show_spot_detail"
+            return raw_action
 
         try:
             data = json.loads(cleaned)
@@ -362,18 +388,7 @@ class GeminiService:
             if emotion not in ["happy", "neutral", "thinking", "confused"]:
                 emotion = "neutral"
 
-            action = data.get("action", "none")
-            valid_actions = [
-                "none", "show_map", "show_spot_detail", "navigate_to_spot", "show_chart",
-                "start_challenge", "open_free_mode"
-            ]
-            if action not in valid_actions:
-                action = "none"
-            elif self._is_route_query(query):
-                if action == "show_spot_detail":
-                    action = "navigate_to_spot"
-            elif action == "navigate_to_spot":
-                action = "show_spot_detail"
+            action = _normalize_action(data.get("action", "none"))
 
             return {
                 "speech": speech,
@@ -383,12 +398,25 @@ class GeminiService:
             }
         except Exception as e:
             print(f"[GeminiService] Gagal parse JSON ({e}), raw text: {text}")
-            return {
-                "speech": f"Halo {user_name}! Nesa siap memandumu di Hutan UNESA. Mau lihat peta atau ikut tantangan?",
-                "emotion": "confused",
-                "action": "none",
-                "action_payload": {}
-            }
+            # Coba ekstrak field "speech" dari JSON yang terpotong agar jawaban AI tetap tersampaikan
+            m_speech = re.search(r'"speech"\s*:\s*"((?:[^"\\]|\\.)+)', cleaned)
+            if m_speech:
+                recovered_speech = m_speech.group(1).replace('\\"', '"').replace("\\n", " ").strip()
+                if len(recovered_speech) >= 5:
+                    m_emotion = re.search(r'"emotion"\s*:\s*"([^"]+)"', cleaned)
+                    m_action = re.search(r'"action"\s*:\s*"([^"]+)"', cleaned)
+                    emotion = m_emotion.group(1) if m_emotion and m_emotion.group(1) in ["happy", "neutral", "thinking", "confused"] else "neutral"
+                    action = _normalize_action(m_action.group(1) if m_action else "none")
+                    return {
+                        "speech": recovered_speech,
+                        "emotion": emotion,
+                        "action": action,
+                        "action_payload": {}
+                    }
+
+            if fallback_args and len(fallback_args) == 3:
+                return self._smart_fallback(user_name, query, fallback_args[0], fallback_args[1], fallback_args[2])
+            return self._smart_fallback(user_name, query, "", "", "none")
 
     def _smart_fallback(
         self,

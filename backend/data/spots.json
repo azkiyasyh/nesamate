@@ -24,7 +24,7 @@
     "name": "Gazeboo 1",
     "area": "Hutan UNESA",
     "category": "Fasilitas Umum",
-    "description": "Tempat untuk kita beristirahat sambil menikmati pemandangan hutan/taman, bisa leha-leha dan santai. Dilengkapi tempat sampah agar lingkungan terjaga.",
+    "description": "Tempat untuk beristirahat sambil menikmati pemandangan hutan/taman, bisa bersantai dan baring. Dilengkapi tempat sampah agar lingkungan terjaga.",
     "facilities": ["Gazeboo", "Tempat Sampah"],
     "lat": -7.300744,
     "lng": 112.671448
@@ -34,7 +34,7 @@
     "name": "Gazeboo 2",
     "area": "Hutan UNESA",
     "category": "Fasilitas Umum",
-    "description": "Tempat untuk kita beristirahat sambil menikmati pemandangan hutan/taman, bisa leha-leha dan santai. Dilengkapi tempat sampah agar lingkungan terjaga.",
+    "description": "Tempat untuk beristirahat sambil menikmati pemandangan hutan/taman, bisa bersantai dan baring. Dilengkapi tempat sampah agar lingkungan terjaga.",
     "facilities": ["Gazeboo", "Tempat Sampah"],
     "lat": -7.300440,
     "lng": 112.671475
@@ -44,7 +44,7 @@
     "name": "Danau Bunga Kertas",
     "area": "Hutan UNESA",
     "category": "titik wisata",
-    "description": "Danau asri dikelilingi bunga kertas yang indah dan gazebo tepi danau.",
+    "description": "Spot wisata di mana pengunjung dapat melihat danau kecil yang dikelilingi pagar bunga kertas yang indah, cocok untuk liburan atau menenangkan diri.",
     "facilities": ["Danau", "Pagar Bunga", "Gazebo"],
     "lat": -7.300294,
     "lng": 112.671901
@@ -54,7 +54,7 @@
     "name": "Taman Jalan Setapak",
     "area": "Hutan UNESA",
     "category": "titik wisata",
-    "description": "Jalur jalan setapak batu bertabur lampu hias taman dengan pagar tanaman alami.",
+    "description": "Spot wisata di Hutan UNESA yang cocok untuk berjalan santai atau jogging, tempat terbuka yang bahkan masih nyaman didatangi saat malam hari.",
     "facilities": ["Lampu Hias taman", "Pagar Tumbuhan", "Jalan batu tapak"],
     "lat": -7.300170,
     "lng": 112.671744
@@ -64,7 +64,7 @@
     "name": "Penangkaran Hewan",
     "area": "Hutan UNESA",
     "category": "titik wisata",
-    "description": "Area penangkaran dan perawatan hewan seperti Rusa Totol dan Iguana.",
+    "description": "Tempat kandang rusa totol dan iguana berada di kawasan Hutan UNESA.",
     "facilities": ["Kandang Rusa Totol", "Kandang Iguana", "Gazebo"],
     "lat": -7.300416,
     "lng": 112.670883
@@ -74,7 +74,7 @@
     "name": "Kandang Rusa",
     "area": "Hutan UNESA",
     "category": "titik wisata",
-    "description": "Kandang konservasi rusa kampus yang luas dan terpelihara.",
+    "description": "Tempat pengunjung melihat rusa di kawasan konservasi Hutan UNESA.",
     "facilities": ["Kandang Rusa"],
     "lat": -7.300756,
     "lng": 112.670951
@@ -86,15 +86,15 @@
     "category": "titik wisata",
     "description": "Danau kecil alami penyejuk ekosistem Hutan UNESA.",
     "facilities": ["Danau Kecil UNESA"],
-    "lat": -7.300733,
-    "lng": 112.670126
+    "lat": -7.300828,
+    "lng": 112.670299
   },
   {
     "id": "LOC010",
     "name": "Zona Merak",
     "area": "Hutan UNESA",
     "category": "titik wisata",
-    "description": "Kandang konservasi satwa unggas merak yang indah.",
+    "description": "Tempat merak bersantai dan pengunjung dapat melihatnya dengan nyaman.",
     "facilities": ["Kandang Merak"],
     "lat": -7.300464,
     "lng": 112.670441
@@ -104,7 +104,7 @@
     "name": "Tugu Taman",
     "area": "Hutan UNESA",
     "category": "titik wisata",
-    "description": "Tugu landmark taman di tengah area jalur hijau.",
+    "description": "Tugu yang menyambut semua orang dan bisa dijadikan spot foto-foto.",
     "facilities": ["Tugu Taman"],
     "lat": -7.300793,
     "lng": 112.671071
@@ -114,8 +114,8 @@
     "name": "Zona Angsa & Bebek",
     "area": "Hutan UNESA",
     "category": "titik wisata",
-    "description": "Area perairan dan kandang satwa unggas air angsa dan bebek.",
-    "facilities": ["Kandang Angsa", "Kandang Bebek"],
+    "description": "Tempat melihat bebek dan angsa. Pengunjung diimbau tidak memberi makan sembarangan.",
+    "facilities": ["Kandang Angsa"],
     "lat": -7.300517,
     "lng": 112.670652
   },
@@ -124,7 +124,7 @@
     "name": "Zona Bugar",
     "area": "Hutan UNESA",
     "category": "Fasilitas Umum",
-    "description": "Area olahraga terbuka di bawah pepohonan rindang kampus.",
+    "description": "Fasilitas umum yang bisa digunakan untuk berolahraga oleh pengunjung, tersedia banyak alat olahraga di sini.",
     "facilities": ["Zona bugar"],
     "lat": -7.300548,
     "lng": 112.670248
@@ -134,7 +134,7 @@
     "name": "Zona Merpati",
     "area": "Hutan UNESA",
     "category": "titik wisata",
-    "description": "Kandang dan area pakan kawanan merpati jinak.",
+    "description": "Tempat pengunjung melihat kawanan merpati di kawasan Hutan UNESA.",
     "facilities": ["Zona Merpati"],
     "lat": -7.300471,
     "lng": 112.670307
@@ -144,7 +144,7 @@
     "name": "TPST",
     "area": "Hutan UNESA",
     "category": "Fasilitas non Umum",
-    "description": "Tempat Pembuangan Sampah Terpadu untuk pengelolaan limbah ramah lingkungan.",
+    "description": "Tempat Pembuangan Sampah Terpadu untuk pengelolaan limbah kawasan kampus.",
     "facilities": ["Tempat Pembuangan Sampah Terpadu"],
     "lat": -7.302821,
     "lng": 112.668399
@@ -191,12 +191,112 @@
   },
   {
     "id": "LOC020",
-    "name": "Projek Tim JJ",
+    "name": "Masjid al-hikmah",
+    "area": "FBS UNESA",
+    "category": "Fasilitas Umum",
+    "description": "Fasilitas umum masjid ibadah di kawasan FBS UNESA.",
+    "facilities": ["Masjid", "Tempat Wudhu"],
+    "lat": -7.302139,
+    "lng": 112.669196
+  },
+  {
+    "id": "LOC021",
+    "name": "Kantin FBS",
+    "area": "FBS UNESA",
+    "category": "Fasilitas Umum",
+    "description": "Fasilitas umum kantin mahasiswa dan pengunjung di kawasan FBS UNESA.",
+    "facilities": ["Kantin"],
+    "lat": -7.302060,
+    "lng": 112.669011
+  },
+  {
+    "id": "LOC022",
+    "name": "Mushola FIP",
+    "area": "FIB UNESA",
+    "category": "Fasilitas Umum",
+    "description": "Fasilitas umum mushola untuk beribadah di kawasan FIP/FIB UNESA.",
+    "facilities": ["Mushola"],
+    "lat": -7.301643,
+    "lng": 112.670476
+  },
+  {
+    "id": "LOC023",
+    "name": "Kantin FIP",
+    "area": "FIB UNESA",
+    "category": "Fasilitas Umum",
+    "description": "Fasilitas umum kantin mahasiswa dan pengunjung di kawasan FIP/FIB UNESA.",
+    "facilities": ["Kantin"],
+    "lat": -7.301813,
+    "lng": 112.670420
+  },
+  {
+    "id": "LOC024",
+    "name": "Parkiran Tingkat",
+    "area": "FIKK UNESA",
+    "category": "Fasilitas Umum",
+    "description": "Fasilitas umum area parkir bertingkat di kawasan FIKK UNESA.",
+    "facilities": ["Parkiran"],
+    "lat": -7.300674,
+    "lng": 112.668072
+  },
+  {
+    "id": "LOC025",
+    "name": "Pixora",
     "area": "Hutan UNESA",
-    "category": "Projek Kelompok",
-    "description": "Lokasi stan/pameran projek tim JJ di kawasan hutan.",
-    "facilities": ["Stan Pameran"],
-    "lat": -7.300587,
-    "lng": 112.670175
+    "category": "projek trm lain",
+    "description": "Ubah setiap momen berfoto menjadi karya seni unik dengan AI Pixora. Memanfaatkan kecerdasan buatan berbasis Generative Adversarial Networks (GAN), transformasikan potret wajah secara instan ke dalam berbagai gaya artistik, mulai dari lukisan klasik hingga ilustrasi.",
+    "facilities": ["Stan Projek TRM"],
+    "lat": -7.300603,
+    "lng": 112.670254
+  },
+  {
+    "id": "LOC026",
+    "name": "BIOVA",
+    "area": "Hutan UNESA",
+    "category": "projek trm lain",
+    "description": "Stan projek TRM BIOVA di kawasan Hutan UNESA.",
+    "facilities": ["Stan Projek TRM"],
+    "lat": -7.300958,
+    "lng": 112.670983
+  },
+  {
+    "id": "LOC027",
+    "name": "Wildex",
+    "area": "Hutan UNESA",
+    "category": "projek trm lain",
+    "description": "WILDEX (Wild Index) adalah aplikasi pembelajaran interaktif berbasis Object Detection dan Image Segmentation yang mengajak pengguna mengeksplorasi satwa di UNESA Kampus Lidah Wetan untuk mempelajari sistem respiratori hewan melalui Mode Explore dan Mode Quest dengan 8 satwa, Card Index, serta Leaderboard.",
+    "facilities": ["Stan Projek TRM"],
+    "lat": -7.300992,
+    "lng": 112.670338
+  },
+  {
+    "id": "LOC028",
+    "name": "BioSphere",
+    "area": "Hutan UNESA",
+    "category": "projek trm lain",
+    "description": "Sistem pemantauan lingkungan berbasis IoT untuk memantau kondisi suhu, kelembapan, dan pH air di kawasan Hutan UNESA guna mengetahui kualitas air kolam dan mendeteksi dini potensi risiko kebakaran.",
+    "facilities": ["Stan Projek TRM", "Sensor IoT"],
+    "lat": -7.300995,
+    "lng": 112.671087
+  },
+  {
+    "id": "LOC029",
+    "name": "Animora",
+    "area": "Hutan UNESA",
+    "category": "projek trm lain",
+    "description": "Media pembelajaran interaktif berbasis Augmented Reality (AR) untuk mengenalkan berbagai jenis hewan dalam bentuk 3D secara langsung, dilengkapi kuis, sistem poin pembuka kunci hewan, dan leaderboard.",
+    "facilities": ["Stan Projek TRM"],
+    "lat": -7.300395,
+    "lng": 112.670696
+  },
+  {
+    "id": "LOC030",
+    "name": "SmartPark Vision: Real-Time Visitor & Activity Monitoring Hutan Kota Unesa",
+    "area": "Hutan UNESA",
+    "category": "projek trm lain",
+    "description": "Sistem pemantauan kepadatan pengunjung dan pola aktivitas di zona Working Space, Gazebo, Kebun Binatang Mini, dan Taman Kebugaran menggunakan model YOLOv8 pada server Flask untuk klasifikasi aktivitas Belajar/Duduk, Berjalan, Melihat Hewan, dan Berolahraga dengan logging otomatis ke Google Sheets.",
+    "facilities": ["Stan Projek TRM", "Kamera YOLOv8"],
+    "lat": -7.3000963,
+    "lng": 112.671238
   }
 ]
