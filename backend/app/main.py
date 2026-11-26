@@ -19,10 +19,14 @@ try:
     from backend.app.routes.chat import router as chat_router
     from backend.app.routes.challenge import router as challenge_router
     from backend.app.routes.data import router as data_router
+    from backend.app.routes.pos_bridge import router as pos_bridge_router
+    from backend.app.routes.tracking import router as tracking_router
 except ImportError:
     from app.routes.chat import router as chat_router
     from app.routes.challenge import router as challenge_router
     from app.routes.data import router as data_router
+    from app.routes.pos_bridge import router as pos_bridge_router
+    from app.routes.tracking import router as tracking_router
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = BASE_DIR.parent / "frontend"
@@ -45,14 +49,18 @@ app.add_middleware(
 app.include_router(chat_router)
 app.include_router(challenge_router)
 app.include_router(data_router)
+app.include_router(pos_bridge_router)
+app.include_router(tracking_router)
 
 
 @app.get("/api/health")
 def health_check():
     try:
         from backend.app.services.gemini import gemini_service
+        from backend.app.services.supabase_service import supabase_service
     except ImportError:
         from app.services.gemini import gemini_service
+        from app.services.supabase_service import supabase_service
     return {
         "status": "ok",
         "app": "NesaMate",
@@ -62,6 +70,8 @@ def health_check():
         "has_api_key": bool(gemini_service.api_key),
         "init_error": gemini_service.init_error,
         "last_error": gemini_service.last_error,
+        "supabase_configured": supabase_service.is_configured(),
+        "pos_jwt_configured": supabase_service.is_jwt_configured(),
     }
 
 

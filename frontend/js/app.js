@@ -437,13 +437,16 @@ class NesaApp {
           nesaMap.initMap('free-map-container');
           if (nesaMap.map) nesaMap.map.invalidateSize();
         } else if (this.currentMapView === '3d') {
-          // Re-trigger render loop 3D saat kembali ke layar
-          if (window.nesa3DMap) window.nesa3DMap.show();
+          // Re-attach & re-trigger render loop 3D saat kembali ke Free Mode
+          if (window.nesa3DMap) window.nesa3DMap.attachTo('free-map-3d-container');
         }
       }, 150);
     } else if (screenId === 'screen-challenge-mode') {
       if (window.nesaMap) {
         window.nesaMap.clearJoggingTrack();
+      }
+      if (window.nesa3DMap && this.challengeMapView !== '3d') {
+        window.nesa3DMap.hide();
       }
       this.renderChallengeCards();
       if (this.challengeState.isInIntro) {
@@ -458,13 +461,20 @@ class NesaApp {
       if (navCard) navCard.classList.remove('is-active');
 
       setTimeout(() => {
-        nesaMap.initMap('jogging-map-container');
-        nesaMap.showJoggingTrack();
+        if (this.joggingMapView === '3d') {
+          this.setJoggingMapViewMode('3d');
+        } else {
+          nesaMap.initMap('jogging-map-container');
+          nesaMap.showJoggingTrack();
+          if (nesaMap.map) nesaMap.map.invalidateSize();
+        }
         this.updateJoggingStepUI();
-        if (nesaMap.map) nesaMap.map.invalidateSize();
       }, 150);
     } else {
-      // Screen greeting, landing, dll: bersihkan jogging track & rute lama
+      // Screen greeting, landing, dll: bersihkan jogging track & rute lama serta jeda 3D map
+      if (window.nesa3DMap) {
+        window.nesa3DMap.hide();
+      }
       if (window.nesaMap) {
         window.nesaMap.clearJoggingTrack();
       }
@@ -530,6 +540,11 @@ class NesaApp {
       }).catch(err => {
         console.warn('[NesaMate API] Session API offline, menggunakan sesi lokal:', err);
       });
+
+      // Pastikan visitor_id tercatat di Supabase pusat (baik guest maupun Google login)
+      if (window.nesaAuth && typeof window.nesaAuth.ensureVisitor === 'function') {
+        window.nesaAuth.ensureVisitor(val).catch(() => {});
+      }
 
       // Unmute/resume audio context & Web Speech API dari gesture klik pengguna
       if (window.speechSynthesis && typeof window.speechSynthesis.resume === 'function') {
@@ -705,6 +720,17 @@ class NesaApp {
         this.setMapViewMode('3d');
       });
     }
+
+    // Toggle 2D ↔ 3D di Mode Berpetualang & Mode Jogging
+    const btnChallenge2D = document.getElementById('btn-challenge-view-2d');
+    const btnChallenge3D = document.getElementById('btn-challenge-view-3d');
+    if (btnChallenge2D) btnChallenge2D.addEventListener('click', () => this.setChallengeMapViewMode('2d'));
+    if (btnChallenge3D) btnChallenge3D.addEventListener('click', () => this.setChallengeMapViewMode('3d'));
+
+    const btnJogging2D = document.getElementById('btn-jogging-view-2d');
+    const btnJogging3D = document.getElementById('btn-jogging-view-3d');
+    if (btnJogging2D) btnJogging2D.addEventListener('click', () => this.setJoggingMapViewMode('2d'));
+    if (btnJogging3D) btnJogging3D.addEventListener('click', () => this.setJoggingMapViewMode('3d'));
 
     // 3D Quick Controls
     const btnResetView = document.getElementById('btn-3d-reset-view');
@@ -1235,6 +1261,9 @@ class NesaApp {
         nesaMap.drawRouteTo(activePos.lat, activePos.lng, activePos.name);
       }
       if (nesaMap.map) nesaMap.map.invalidateSize();
+      if (this.challengeMapView === '3d') {
+        this.setChallengeMapViewMode('3d');
+      }
     }, 150);
   }
 
@@ -1384,12 +1413,8 @@ class NesaApp {
 
       // Inisialisasi atau tampilkan kembali 3D map
       if (window.nesa3DMap) {
-        // Hanya init jika belum pernah — renderer dipertahankan antar pergantian tampilan
-        if (!window.nesa3DMap.renderer) {
-          window.nesa3DMap.init('free-map-3d-container');
-        } else {
-          window.nesa3DMap.show();
-        }
+        window.nesa3DMap.attachTo('free-map-3d-container');
+        window.nesa3DMap.syncFrom2DMap();
       }
 
       this.showToast('🌐 Tampilan Digital Twin 3D aktif');
@@ -1420,6 +1445,99 @@ class NesaApp {
 
       this.showToast('📍 Tampilan Peta 2D aktif');
     }
+  }
+
+  /**
+   * Helper bersama untuk toggle Peta 2D ↔ Digital Twin 3D pada Mode Berpetualang & Jogging
+   */
+  _toggleSubMapView(mode, { container2DId, container3DId, btn2DId, btn3DId, onActivate3D, onActivate2D }) {
+    const c2d = document.getElementById(container2DId);
+    const c3d = document.getElementById(container3DId);
+    const b2d = document.getElementById(btn2DId);
+    const b3d = document.getElementById(btn3DId);
+
+    if (mode === '3d') {
+      if (c2d) c2d.style.display = 'none';
+      if (c3d) c3d.style.display = 'block';
+      if (b2d) b2d.classList.remove('is-active');
+      if (b3d) b3d.classList.add('is-active');
+
+      if (window.nesa3DMap) {
+        window.nesa3DMap.attachTo(container3DId);
+        if (typeof onActivate3D === 'function') onActivate3D();
+      }
+      this.showToast('🌐 Tampilan Digital Twin 3D aktif');
+    } else {
+      if (c2d) c2d.style.display = 'block';
+      if (c3d) c3d.style.display = 'none';
+      if (b2d) b2d.classList.add('is-active');
+      if (b3d) b3d.classList.remove('is-active');
+
+      if (window.nesa3DMap) window.nesa3DMap.hide();
+      if (typeof onActivate2D === 'function') onActivate2D();
+      if (window.nesaMap && window.nesaMap.map) {
+        setTimeout(() => window.nesaMap.map.invalidateSize(), 100);
+      }
+      this.showToast('📍 Tampilan Peta 2D aktif');
+    }
+  }
+
+  /**
+   * Toggle Peta 2D ↔ 3D di Mode Berpetualang (Challenge)
+   */
+  setChallengeMapViewMode(mode) {
+    this.challengeMapView = mode;
+    this._toggleSubMapView(mode, {
+      container2DId: 'challenge-map-container',
+      container3DId: 'challenge-map-3d-container',
+      btn2DId: 'btn-challenge-view-2d',
+      btn3DId: 'btn-challenge-view-3d',
+      onActivate3D: () => {
+        if (!window.nesa3DMap) return;
+        if (window.nesaMap && window.nesaMap.activeRoute) {
+          window.nesa3DMap.syncFrom2DMap();
+        } else {
+          const activePos = this.challengeState.positions.find(p => p.index === this.challengeState.activePosIndex) || this.challengeState.positions[0];
+          if (activePos && window.nesaMap) {
+            const start = window.nesaMap.userCoordinates || [-7.3002, 112.6738];
+            window.nesa3DMap.drawRouteFromGPS([start, [activePos.lat, activePos.lng]], activePos.name, false);
+          }
+        }
+      },
+      onActivate2D: () => {
+        if (window.nesaMap) {
+          nesaMap.initMap('challenge-map-container');
+        }
+      }
+    });
+  }
+
+  /**
+   * Toggle Peta 2D ↔ 3D di Mode Jogging
+   */
+  setJoggingMapViewMode(mode) {
+    this.joggingMapView = mode;
+    this._toggleSubMapView(mode, {
+      container2DId: 'jogging-map-container',
+      container3DId: 'jogging-map-3d-container',
+      btn2DId: 'btn-jogging-view-2d',
+      btn3DId: 'btn-jogging-view-3d',
+      onActivate3D: () => {
+        if (window.nesa3DMap && typeof NESA_DATA !== 'undefined' && NESA_DATA.joggingTrack) {
+          window.nesa3DMap.drawRouteFromGPS(
+            NESA_DATA.joggingTrack.coordinates,
+            NESA_DATA.joggingTrack.name || 'Loop Hutan UNESA',
+            true
+          );
+        }
+      },
+      onActivate2D: () => {
+        if (window.nesaMap) {
+          nesaMap.initMap('jogging-map-container');
+          nesaMap.showJoggingTrack();
+        }
+      }
+    });
   }
 
   /**

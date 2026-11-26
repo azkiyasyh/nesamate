@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NesaMate — Test Login & Pos Bridge</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #22c55e;
+      --accent-hover: #16a34a;
+      --blue: #3b82f6;
+      --warn: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px 16px;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 780px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+    }
+    h1 { margin: 0 0 4px; font-size: 20px; }
+    h2 { margin: 0 0 12px; font-size: 16px; color: #e2e8f0; }
+    p.sub { margin: 0; color: var(--muted); font-size: 13px; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    input, select {
+      width: 100%;
+      padding: 9px 11px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0f172a;
+      color: var(--text);
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 9px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #fff;
+      background: var(--accent);
+    }
+    button:hover { background: var(--accent-hover); }
+    button.secondary { background: var(--blue); }
+    button.outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    button.warn { background: var(--warn); color: #0f172a; }
+    pre {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: 10px 0 0;
+      color: #cbd5e1;
+      max-height: 260px;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #334155;
+      color: #e2e8f0;
+      margin-left: 6px;
+    }
+    a.redirect-link {
+      display: inline-block;
+      margin-top: 8px;
+      color: #4ade80;
+      font-size: 13px;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>NesaMate — Halaman Testing Auth & Pos Bridge</h1>
+      <p class="sub">File khusus testing (terpisah dari <code>index.html</code> agar aman dari konflik frontend).</p>
+    </div>
+
+    <!-- 1. KONFIGURASI SUPABASE -->
+    <div class="card">
+      <h2>1. Koneksi Supabase Client <span class="badge">Anon Key Only</span></h2>
+      <div class="grid-2">
+        <div>
+          <label>Supabase Project URL</label>
+          <input id="sb-url" placeholder="https://xxxx.supabase.co" />
+        </div>
+        <div>
+          <label>Supabase Anon / Publishable Key</label>
+          <input id="sb-anon" placeholder="eyJhbGciOi..." />
+        </div>
+      </div>
+      <div class="btn-row">
+        <button onclick="saveSupabaseConfig()">Simpan Config</button>
+        <button class="outline" onclick="checkBackendHealth()">Cek /api/health</button>
+      </div>
+      <pre id="out-config">Belum dites.</pre>
+    </div>
+
+    <!-- 2. LOGIN SUPABASE (EMAIL / GOOGLE) -->
+    <div class="card">
+      <h2>2. Test Login Supabase (Admin Dashboard / Google)</h2>
+      <div class="grid-2">
+        <div>
+          <label>Email</label>
+          <input id="login-email" type="email" placeholder="admin-dashboard@contoh.com" />
+        </div>
+        <div>
+          <label>Password</label>
+          <input id="login-pass" type="password" placeholder="••••••••" />
+        </div>
+      </div>
+      <div class="btn-row">
+        <button onclick="loginEmail()">Login Email</button>
+        <button class="secondary" onclick="loginGoogle()">Login dengan Google</button>
+        <button class="outline" onclick="checkSession()">Cek Session</button>
+        <button class="warn" onclick="testAdminRpc()">Test RPC admin_summary()</button>
+        <button class="outline" onclick="logoutSupabase()">Logout</button>
+      </div>
+      <pre id="out-auth">Status login belum dicek.</pre>
+    </div>
+
+    <!-- 3. TEST FLOW VISITOR -> CHECKIN -> TOKEN -> POS VERIFY & EVENT -->
+    <div class="card">
+      <h2>3. Test Flow Hub-and-Spoke (Visitor → Check-in → Token → Pos)</h2>
+      <div class="grid-2">
+        <div>
+          <label>Nama Pengunjung (Tanpa Login)</label>
+          <input id="vis-name" value="Pengunjung Test" />
+        </div>
+        <div>
+          <label>Visitor ID (terisi otomatis)</label>
+          <input id="vis-id" type="number" placeholder="1" />
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label>Pilih Pos (1–6)</label>
+          <select id="pos-id">
+            <option value="1">Pos 1: Pixora</option>
+            <option value="2">Pos 2: BIOVA</option>
+            <option value="3">Pos 3: Wildex</option>
+            <option value="4">Pos 4: BioSphere</option>
+            <option value="5">Pos 5: Animora</option>
+            <option value="6">Pos 6: SmartPark Vision</option>
+          </select>
+        </div>
+        <div>
+          <label>Metode Check-in</label>
+          <select id="checkin-method">
+            <option value="manual">manual (bypass GPS/QR untuk test)</option>
+            <option value="gps">gps</option>
+            <option value="qr">qr</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label>Lat / Lng (jika metode GPS)</label>
+          <div class="grid-2">
+            <input id="gps-lat" placeholder="-7.300603" value="-7.300603" />
+            <input id="gps-lng" placeholder="112.670254" value="112.670254" />
+          </div>
+        </div>
+        <div>
+          <label>QR Token (jika metode QR)</label>
+          <input id="qr-token" placeholder="isi qr_token dari post_secrets" />
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label>API Key Asli Pos (header x-pos-key untuk simulasi backend pos)</label>
+          <input id="pos-api-key" placeholder="key asli sebelum di-SHA256" />
+        </div>
+        <div>
+          <label>Token JWT 5 Menit (terisi otomatis setelah check-in)</label>
+          <input id="pos-jwt" placeholder="eyJ..." />
+        </div>
+      </div>
+      <div class="btn-row">
+        <button onclick="createVisitor()">1) Buat Visitor</button>
+        <button class="secondary" onclick="doCheckin()">2) Check-in & Buat Token</button>
+        <button class="outline" onclick="verifyPosToken()">3) Simulasi /api/pos/verify</button>
+        <button class="warn" onclick="sendPosEvent()">4) Simulasi /api/pos/event</button>
+      </div>
+      <div id="redirect-preview"></div>
+      <pre id="out-pos">Siap menguji alur visitor & pos.</pre>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = (location.hostname === '127.0.0.1' || location.hostname === 'localhost')
+      ? 'http://127.0.0.1:8000/api'
+      : '/api';
+
+    let sbClient = null;
+
+    function log(id, data) {
+      document.getElementById(id).textContent =
+        typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    }
+
+    function initSupabaseFromStorage() {
+      const url = localStorage.getItem('nesa_test_sb_url') || 'https://cmcvbrfdejchbijsvxxu.supabase.co';
+      const anon = localStorage.getItem('nesa_test_sb_anon') || '';
+      document.getElementById('sb-url').value = url;
+      document.getElementById('sb-anon').value = anon;
+      if (url && anon && window.supabase) {
+        sbClient = window.supabase.createClient(url, anon);
+        checkSession();
+      }
+    }
+
+    function saveSupabaseConfig() {
+      const url = document.getElementById('sb-url').value.trim();
+      const anon = document.getElementById('sb-anon').value.trim();
+      localStorage.setItem('nesa_test_sb_url', url);
+      localStorage.setItem('nesa_test_sb_anon', anon);
+      if (!url || !anon) return log('out-config', 'Isi URL dan Anon Key dulu.');
+      sbClient = window.supabase.createClient(url, anon);
+      log('out-config', 'Config tersimpan & client Supabase siap.');
+    }
+
+    async function checkBackendHealth() {
+      try {
+        const res = await fetch(`${API_BASE}/health`);
+        log('out-config', await res.json());
+      } catch (err) {
+        log('out-config', `Error: ${err.message}`);
+      }
+    }
+
+    function requireSb() {
+      if (!sbClient) {
+        log('out-auth', 'Simpan Supabase URL & Anon Key dulu di bagian 1.');
+        return false;
+      }
+      return true;
+    }
+
+    async function loginEmail() {
+      if (!requireSb()) return;
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-pass').value;
+      const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+      log('out-auth', error ? { error: error.message } : { user: data.user, role: data.user?.app_metadata?.role });
+    }
+
+    async function loginGoogle() {
+      if (!requireSb()) return;
+      const { data, error } = await sbClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.href.split('#')[0] }
+      });
+      if (error) log('out-auth', { error: error.message });
+      else log('out-auth', data);
+    }
+
+    async function checkSession() {
+      if (!requireSb()) return;
+      const { data, error } = await sbClient.auth.getSession();
+      if (error) return log('out-auth', { error: error.message });
+      const user = data?.session?.user;
+      log('out-auth', user ? { logged_in: true, email: user.email, role: user.app_metadata?.role, id: user.id } : { logged_in: false });
+    }
+
+    async function testAdminRpc() {
+      if (!requireSb()) return;
+      const { data, error } = await sbClient.rpc('admin_summary');
+      log('out-auth', error ? { error: error.message } : { admin_summary: data });
+    }
+
+    async function logoutSupabase() {
+      if (!requireSb()) return;
+      await sbClient.auth.signOut();
+      log('out-auth', { logged_in: false, message: 'Logout berhasil' });
+    }
+
+    async function createVisitor() {
+      const display_name = document.getElementById('vis-name').value.trim() || null;
+      const res = await fetch(`${API_BASE}/visitors`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ display_name })
+      });
+      const data = await res.json();
+      if (data.visitor_id) document.getElementById('vis-id').value = data.visitor_id;
+      log('out-pos', data);
+    }
+
+    async function doCheckin() {
+      const visitor_id = Number(document.getElementById('vis-id').value);
+      const post_id = Number(document.getElementById('pos-id').value);
+      const method = document.getElementById('checkin-method').value;
+      const lat = Number(document.getElementById('gps-lat').value);
+      const lng = Number(document.getElementById('gps-lng').value);
+      const qr_token = document.getElementById('qr-token').value.trim() || null;
+
+      const res = await fetch(`${API_BASE}/checkins`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visitor_id, post_id, method, lat, lng, qr_token })
+      });
+      const data = await res.json();
+      if (data.token) document.getElementById('pos-jwt').value = data.token;
+      const preview = document.getElementById('redirect-preview');
+      preview.innerHTML = data.redirect_url
+        ? `<a class="redirect-link" href="${data.redirect_url}" target="_blank" rel="noopener">🔗 Buka Redirect Link: ${data.redirect_url}</a>`
+        : '';
+      log('out-pos', data);
+    }
+
+    async function verifyPosToken() {
+      const token = document.getElementById('pos-jwt').value.trim();
+      const xPosKey = document.getElementById('pos-api-key').value.trim();
+      const res = await fetch(`${API_BASE}/pos/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-pos-key': xPosKey },
+        body: JSON.stringify({ token })
+      });
+      log('out-pos', await res.json());
+    }
+
+    async function sendPosEvent() {
+      const visitor_id = Number(document.getElementById('vis-id').value);
+      const xPosKey = document.getElementById('pos-api-key').value.trim();
+      const res = await fetch(`${API_BASE}/pos/event`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-pos-key': xPosKey },
+        body: JSON.stringify({
+          visitor_id,
+          event_id: `test-evt-${Date.now()}`,
+          event_type: 'completed',
+          score: 100,
+          duration_s: 45,
+          payload: { source: 'test-auth.html' }
+        })
+      });
+      log('out-pos', await res.json());
+    }
+
+    window.addEventListener('DOMContentLoaded', initSupabaseFromStorage);
+  </script>
+</body>
+</html>

@@ -46,10 +46,12 @@ body {
   background-color: #12221B;
   color: var(--color-dark-charcoal);
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
   align-items: center;
   overflow-x: hidden;
+  overscroll-behavior-y: none;
   background-image: 
     radial-gradient(circle at 10% 20%, rgba(127, 140, 106, 0.18) 0%, transparent 40%),
     radial-gradient(circle at 90% 80%, rgba(200, 180, 138, 0.14) 0%, transparent 50%);
@@ -62,7 +64,8 @@ body {
   width: 100%;
   max-width: 430px;
   height: 100vh;
-  max-height: 900px;
+  height: 100dvh;
+  max-height: 100dvh;
   background-color: var(--color-cream);
   position: relative;
   overflow: hidden;
@@ -72,6 +75,7 @@ body {
 @media (min-width: 480px) {
   .mobile-device-container {
     height: 94vh;
+    max-height: 900px;
     border-radius: 36px;
     border: 7px solid #25332B;
     box-shadow: 0 30px 80px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(200, 180, 138, 0.25);
@@ -113,11 +117,14 @@ body {
    LAYAR 1: LANDING PAGE (ONBOARDING)
    ======================================================== */
 .landing-screen {
-  padding: 32px 20px 24px;
+  padding: max(24px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
   justify-content: space-between;
   align-items: center;
   background: linear-gradient(180deg, #F5F0E6 0%, #EDE5D5 100%);
   text-align: center;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .landing-header {
@@ -1912,4 +1919,59 @@ button {
 .pip-cam-icon {
   font-size: 11px;
   opacity: 0.9;
+}
+
+/* ========================================================
+   MOBILE VIEWPORT & SAFE-AREA OPTIMIZATIONS
+   ======================================================== */
+@media (max-width: 480px) {
+  .bottom-nav-bar {
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    height: auto;
+    min-height: 60px;
+  }
+
+  .free-top-bar {
+    top: max(10px, env(safe-area-inset-top));
+  }
+
+  .map-3d-quick-controls {
+    bottom: calc(68px + env(safe-area-inset-bottom));
+  }
+
+  .pill-mode-btn,
+  .pill-btn-start,
+  .bottom-nav-tab {
+    min-height: 44px;
+  }
+}
+
+@media (max-height: 740px) {
+  .landing-screen {
+    padding-top: max(14px, env(safe-area-inset-top));
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+    gap: 6px;
+  }
+
+  .landing-header {
+    margin-top: 2px;
+  }
+
+  .landing-title {
+    font-size: 30px;
+  }
+
+  .landing-subtitle {
+    font-size: 12px;
+  }
+
+  #landing-avatar-slot {
+    max-height: 200px;
+    overflow: hidden;
+  }
+
+  .landing-form-box {
+    margin-bottom: 6px;
+    gap: 8px;
+  }
 }

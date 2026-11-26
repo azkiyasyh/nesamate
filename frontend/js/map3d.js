@@ -177,6 +177,12 @@ class Nesa3DMapManager {
 
     // 8. Muat model GLB 3D
     this.loadModel();
+
+    // 9. Aktifkan render loop & sinkronisasi sejak pembukaan pertama (anti-stuck)
+    this.isActive = true;
+    this.handleResize();
+    this.syncFrom2DMap();
+    this.startAnimationLoop();
   }
 
   /**
@@ -928,11 +934,48 @@ class Nesa3DMapManager {
   }
 
   /**
+   * Memindahkan kanvas renderer 3D ke container mode tertentu (Eksplorasi / Berpetualang / Jogging)
+   * tanpa memuat ulang model GLB maupun membuat konteks WebGL baru.
+   */
+  attachTo(containerId) {
+    const target = document.getElementById(containerId);
+    if (!target) {
+      console.warn(`[Nesa3D] Container #${containerId} tidak ditemukan.`);
+      return;
+    }
+
+    if (!this.renderer) {
+      this.init(containerId);
+      return;
+    }
+
+    if (this.container && this.container !== target) {
+      this.container.style.display = 'none';
+    }
+
+    this.containerId = containerId;
+    this.container = target;
+    this.container.style.display = 'block';
+
+    if (this.renderer.domElement.parentNode !== this.container) {
+      this.container.appendChild(this.renderer.domElement);
+    }
+
+    this.isActive = true;
+    this.handleResize();
+    if (!this.isLoaded && !this.isLoading) {
+      this.loadModel();
+    }
+    this.startAnimationLoop();
+  }
+
+  /**
    * Menampilkan tampilan 3D dan memulai render loop
    */
   show() {
     if (!this.container) {
       this.init(this.containerId);
+      return;
     }
 
     if (this.container) {

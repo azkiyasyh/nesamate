@@ -223,8 +223,8 @@ class GeminiService:
 
     def generate_speech_audio(self, text: str) -> Optional[str]:
         """
-        Generate audio TTS via ElevenLabs (jika ELEVENLABS_API_KEY tersedia),
-        dengan dukungan lokal (/assets/audio/generated/) maupun serverless Vercel (/tmp + Base64 Data URI).
+        Generate audio TTS murni menggunakan Edge-TTS (id-ID-GadisNeural),
+        dengan dukungan cache lokal (/assets/audio/generated/) maupun serverless Vercel (/tmp + Base64 Data URI).
         """
         if os.getenv("ENVIRONMENT") == "test" or os.getenv("TESTING") == "1":
             return None
@@ -235,6 +235,7 @@ class GeminiService:
         if not clean_text:
             return None
 
+        import asyncio
         import base64
         import hashlib
         import tempfile
@@ -254,111 +255,37 @@ class GeminiService:
             tmp_out_dir.mkdir(parents=True, exist_ok=True)
             return tmp_out_dir, True
 
-        def _format_audio_output(file_path: Path, filename: str, mime_type: str, use_data_uri: bool) -> str:
+        def _format_audio_output(file_path: Path, filename: str, use_data_uri: bool) -> str:
             if not use_data_uri:
                 return f"/assets/audio/generated/{filename}"
             b64 = base64.b64encode(file_path.read_bytes()).decode("ascii")
-            return f"data:{mime_type};base64,{b64}"
+            return f"data:audio/mpeg;base64,{b64}"
 
         out_dir, use_data_uri = _get_cache_dir()
-
-        eleven_key = os.getenv("ELEVENLABS_API_KEY", "").strip()
-        if eleven_key:
-            try:
-                import urllib.request
-
-                voice_id = os.getenv("ELEVENLABS_VOICE_ID", "jBpfuIE2acCO8z3wKNLl").strip()
-                model_id = os.getenv("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2").strip()
-                text_hash = hashlib.md5(f"{voice_id}:{model_id}:{clean_text}".encode("utf-8")).hexdigest()[:16]
-                filename = f"nesa_11labs_{text_hash}.mp3"
-                file_path = out_dir / filename
-
-                # Cek file pre-generated di repo maupun di cache dir
-                static_path = local_out_dir / filename
-                if static_path.exists() and static_path.stat().st_size >= 100:
-                    return _format_audio_output(static_path, filename, "audio/mpeg", use_data_uri)
-                if file_path.exists() and file_path.stat().st_size >= 100:
-                    return _format_audio_output(file_path, filename, "audio/mpeg", use_data_uri)
-
-                url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
-                payload = json.dumps({
-                    "text": clean_text,
-                    "model_id": model_id,
-                    "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}
-                }).encode("utf-8")
-                req = urllib.request.Request(
-                    url,
-                    data=payload,
-                    headers={
-                        "xi-api-key": eleven_key,
-                        "Content-Type": "application/json",
-                        "Accept": "audio/mpeg"
-                    },
-                    method="POST"
-                )
-                with urllib.request.urlopen(req, timeout=20.0) as resp:
-                    audio_bytes = resp.read()
-                if audio_bytes and len(audio_bytes) >= 100:
-                    file_path.write_bytes(audio_bytes)
-                    return _format_audio_output(file_path, filename, "audio/mpeg", use_data_uri)
-            except Exception as e:
-                print(f"[GeminiService] ElevenLabs TTS gagal: {e}", flush=True)
-
         text_hash = hashlib.md5(clean_text.encode("utf-8")).hexdigest()[:16]
-
-        if self.client:
-            try:
-                import wave
-                from google.genai import types
-
-                filename = f"nesa_kore_{text_hash}.wav"
-                file_path = out_dir / filename
-
-                if file_path.exists() and file_path.stat().st_size >= 100:
-                    return _format_audio_output(file_path, filename, "audio/wav", use_data_uri)
-
-                resp = self.client.models.generate_content(
-                    model="gemini-2.5-flash-preview-tts",
-                    contents=f"Ucapkan dengan nada ceria, ramah, bersahabat, dan fasih berbahasa Indonesia: {clean_text}",
-                    config=types.GenerateContentConfig(
-                        response_modalities=["AUDIO"],
-                        speech_config=types.SpeechConfig(
-                            voice_config=types.VoiceConfig(
-                                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Kore")
-                            )
-                        )
-                    )
-                )
-
-                for part in resp.candidates[0].content.parts:
-                    if part.inline_data:
-                        with wave.open(str(file_path), "wb") as wav_file:
-                            wav_file.setnchannels(1)
-                            wav_file.setsampwidth(2)
-                            wav_file.setframerate(24000)
-                            wav_file.writeframes(part.inline_data.data)
-
-                        return _format_audio_output(file_path, filename, "audio/wav", use_data_uri)
-            except Exception as e:
-                print(f"[GeminiTTS] Error/Quota ({e}), fallback otomatis ke Edge-TTS...", flush=True)
+        mp3_filename = f"nesa_edge_{text_hash}.mp3"
+        mp3_path = out_dir / mp3_filename
 
         try:
-            import asyncio
             import edge_tts
-            mp3_filename = f"nesa_fallback_{text_hash}.mp3"
-            mp3_path = out_dir / mp3_filename
+
+            static_path = local_out_dir / mp3_filename
+            if static_path.exists() and static_path.stat().st_size >= 100:
+                return _format_audio_output(static_path, mp3_filename, use_data_uri)
+
             if not mp3_path.exists() or mp3_path.stat().st_size < 100:
                 async def _run_edge():
                     comm = edge_tts.Communicate(clean_text, "id-ID-GadisNeural", rate="+6%", pitch="+6Hz")
                     await comm.save(str(mp3_path))
                 asyncio.run(_run_edge())
+
             if mp3_path.exists() and mp3_path.stat().st_size >= 100:
-                return _format_audio_output(mp3_path, mp3_filename, "audio/mpeg", use_data_uri)
+                return _format_audio_output(mp3_path, mp3_filename, use_data_uri)
             if mp3_path.exists():
                 mp3_path.unlink(missing_ok=True)
             return None
         except Exception as e2:
-            print(f"[EdgeTTS] Error fallback: {e2}", flush=True)
+            print(f"[EdgeTTS] Error: {e2}", flush=True)
             return None
 
     def _parse_json_response(

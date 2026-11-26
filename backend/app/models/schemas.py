@@ -83,3 +83,99 @@ class TTSResponse(BaseModel):
     audio_url: Optional[str] = None
     cached: bool = False
     benchmarks: Optional[Dict[str, float]] = None
+
+
+class VisitorCreateRequest(BaseModel):
+    display_name: Optional[str] = Field(default=None, max_length=60)
+
+
+class VisitorResponse(BaseModel):
+    visitor_id: int
+    display_name: Optional[str] = None
+    created_at: str
+
+
+class CheckinRequest(BaseModel):
+    visitor_id: int = Field(..., ge=1)
+    post_id: int = Field(..., ge=1)
+    method: Literal["gps", "qr", "manual"] = "gps"
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    qr_token: Optional[str] = None
+
+
+class CheckinResponse(BaseModel):
+    success: bool
+    visitor_id: int
+    post_id: int
+    method: str
+    token: str
+    expires_in_seconds: int = 300
+    redirect_url: Optional[str] = None
+
+
+class PosVerifyRequest(BaseModel):
+    token: str = Field(..., min_length=10)
+
+
+class PosVerifyResponse(BaseModel):
+    valid: bool
+    visitor_id: int
+    post_id: int
+    display_name: Optional[str] = None
+
+
+class PosEventRequest(BaseModel):
+    visitor_id: int = Field(..., ge=1)
+    event_id: str = Field(..., min_length=1, max_length=120)
+    event_type: str = Field(..., min_length=1, max_length=60)
+    score: Optional[float] = None
+    duration_s: Optional[int] = Field(default=None, ge=0)
+    payload: Optional[Dict[str, Any]] = None
+
+
+class PosEventResponse(BaseModel):
+    success: bool
+    post_id: int
+    visitor_id: int
+    event_id: str
+    event_type: str
+    duplicate: bool = False
+
+
+class LiveLocationRequest(BaseModel):
+    visitor_id: int = Field(..., ge=1)
+    lat: float
+    lng: float
+
+
+class JoggingStartRequest(BaseModel):
+    visitor_id: int = Field(..., ge=1)
+
+
+class JoggingFinishRequest(BaseModel):
+    session_id: int = Field(..., ge=1)
+    distance_m: float = Field(..., ge=0)
+    route: Optional[Dict[str, Any]] = None
+
+
+class FeedbackRequest(BaseModel):
+    visitor_id: int = Field(..., ge=1)
+    post_id: int = Field(..., ge=1)
+    rating: int = Field(..., ge=1, le=5)
+    comment: Optional[str] = Field(default=None, max_length=500)
+
+
+class AuthCheckEmailRequest(BaseModel):
+    email: str = Field(..., min_length=5, max_length=120)
+
+
+class AuthRegisterRequest(BaseModel):
+    email: str = Field(..., min_length=5, max_length=120)
+    nickname: str = Field(..., min_length=1, max_length=25)
+    password: str = Field(..., min_length=6, max_length=100)
+
+
+class AuthLoginRequest(BaseModel):
+    email: str = Field(..., min_length=5, max_length=120)
+    password: str = Field(..., min_length=1, max_length=100)
