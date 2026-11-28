@@ -487,6 +487,27 @@ class NesaMapManager {
     if (window.nesa3DMap && typeof window.nesa3DMap.updateUserLocation === 'function') {
       window.nesa3DMap.updateUserLocation(lat, lng);
     }
+
+    // Kirim lokasi live ke Supabase pusat (throttled tiap 5 detik)
+    this.syncLiveLocationToServer(lat, lng);
+  }
+
+  /**
+   * Mengirim posisi GPS terbaru ke /api/live-location maksimal tiap 5 detik
+   */
+  syncLiveLocationToServer(lat, lng) {
+    const visitorId = window.nesaAuth && window.nesaAuth.visitorId;
+    if (!visitorId || typeof window.API_BASE_URL === 'undefined') return;
+
+    const now = Date.now();
+    if (this._lastLiveSyncAt && now - this._lastLiveSyncAt < 5000) return;
+    this._lastLiveSyncAt = now;
+
+    fetch(`${window.API_BASE_URL}/live-location`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visitor_id: visitorId, lat, lng })
+    }).catch(() => {});
   }
 
   /**

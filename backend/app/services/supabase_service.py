@@ -238,11 +238,18 @@ class SupabaseService:
         return {"inserted": len(rows) > 0, "event": rows[0] if rows else None}
 
     def upsert_live_location(self, visitor_id: int, lat: float, lng: float) -> Dict[str, Any]:
+        from datetime import datetime, timezone
+
         rows = self._request(
             "POST",
             "live_locations",
             params={"on_conflict": "visitor_id"},
-            json_body={"visitor_id": int(visitor_id), "lat": float(lat), "lng": float(lng)},
+            json_body={
+                "visitor_id": int(visitor_id),
+                "lat": float(lat),
+                "lng": float(lng),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
             extra_headers={"Prefer": "resolution=merge-duplicates,return=representation"},
         )
         return rows[0]
