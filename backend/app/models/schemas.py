@@ -102,6 +102,7 @@ class CheckinRequest(BaseModel):
     lat: Optional[float] = None
     lng: Optional[float] = None
     qr_token: Optional[str] = None
+    email: Optional[str] = Field(default=None, max_length=120)
 
 
 class CheckinResponse(BaseModel):
@@ -123,6 +124,7 @@ class PosVerifyResponse(BaseModel):
     visitor_id: int
     post_id: int
     display_name: Optional[str] = None
+    email: Optional[str] = None
 
 
 class PosEventRequest(BaseModel):

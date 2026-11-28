@@ -967,6 +967,9 @@ class NesaApp {
           <button class="btn-pill-submit-pos" style="background:#FAF7F0; color:var(--color-primary); border: 1.5px solid var(--color-primary); width:100%; margin-top:6px; display:flex; justify-content:center; align-items:center; gap:6px;" onclick="window.nesaApp.showChallengeMapSubView(true)">
             🗺️ Panduan Rute di Peta
           </button>
+          <button class="btn-pill-submit-pos" style="background:var(--color-primary); color:#FAF7F0; width:100%; margin-top:6px; display:flex; justify-content:center; align-items:center; gap:6px;" onclick="window.nesaApp.checkinAndOpenPos(${pos.index})">
+            🚀 Saya Sudah Sampai (Buka Web Pos)
+          </button>
         `;
         container.appendChild(card);
       } else {
@@ -983,6 +986,71 @@ class NesaApp {
         container.appendChild(card);
       }
     });
+  }
+
+  /**
+   * Check-in di pos aktif -> dapatkan token JWT 5 menit -> buka web eksternal pos (?t=<token>)
+   */
+  async checkinAndOpenPos(postIdOverride = null) {
+    const postId = Number(postIdOverride || this.challengeState.activePosIndex || 1);
+    const name = this.userName || localStorage.getItem('nesamate_user_name') || 'Pengunjung';
+
+    let visitorId = window.nesaAuth && window.nesaAuth.visitorId;
+    if (!visitorId && window.nesaAuth && typeof window.nesaAuth.ensureVisitor === 'function') {
+      visitorId = await window.nesaAuth.ensureVisitor(name);
+    }
+    if (!visitorId) {
+      this.showToast('Gagal mendaftarkan visitor. Pastikan server aktif.');
+      return;
+    }
+
+    const email = (window.nesaAuth && window.nesaAuth.user && window.nesaAuth.user.email) || null;
+    const coords = (window.nesaMap && window.nesaMap.userCoordinates) || null;
+
+    this.showToast(`🔄 Menyiapkan tiket masuk Pos ${postId}...`);
+    try {
+      let res = await fetch(`${API_BASE_URL}/checkins`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          visitor_id: visitorId,
+          post_id: postId,
+          method: coords ? 'gps' : 'manual',
+          lat: coords ? coords[0] : null,
+          lng: coords ? coords[1] : null,
+          email
+        })
+      });
+
+      // Fallback ke 'manual' jika sedang uji coba dari rumah (di luar radius GPS pos)
+      if (res.status === 403) {
+        res = await fetch(`${API_BASE_URL}/checkins`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            visitor_id: visitorId,
+            post_id: postId,
+            method: 'manual',
+            email
+          })
+        });
+      }
+
+      const data = await res.json();
+      if (!res.ok) {
+        this.showToast(data.detail || 'Gagal check-in ke pos.');
+        return;
+      }
+
+      if (data.redirect_url) {
+        window.open(data.redirect_url, '_blank', 'noopener');
+        this.showToast(`🚀 Membuka web Pos ${postId}...`);
+      } else {
+        this.showToast(`⚠️ URL eksternal Pos ${postId} belum diatur di database.`);
+      }
+    } catch (err) {
+      this.showToast(`Gagal membuka web pos: ${err.message}`);
+    }
   }
 
   /**

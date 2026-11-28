@@ -187,7 +187,9 @@ def checkin_at_post(req: CheckinRequest):
             raise HTTPException(status_code=403, detail="QR token pos tidak valid.")
 
     supabase_service.upsert_checkin(req.visitor_id, req.post_id, req.method)
-    token = supabase_service.create_pos_token(req.visitor_id, req.post_id, ttl_seconds=300)
+    token = supabase_service.create_pos_token(
+        req.visitor_id, req.post_id, ttl_seconds=300, email=req.email
+    )
     redirect_url = _append_token_query(post.get("external_url"), token)
 
     return CheckinResponse(
@@ -232,6 +234,7 @@ def verify_pos_token(req: PosVerifyRequest, x_pos_key: Optional[str] = Header(de
         visitor_id=visitor_id,
         post_id=pos_id,
         display_name=visitor.get("display_name"),
+        email=claims.get("email"),
     )
 
 

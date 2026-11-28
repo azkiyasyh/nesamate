@@ -82,7 +82,13 @@ class SupabaseService:
     def hash_api_key(raw_key: str) -> str:
         return hashlib.sha256((raw_key or "").strip().encode("utf-8")).hexdigest()
 
-    def create_pos_token(self, visitor_id: int, post_id: int, ttl_seconds: int = 300) -> str:
+    def create_pos_token(
+        self,
+        visitor_id: int,
+        post_id: int,
+        ttl_seconds: int = 300,
+        email: Optional[str] = None,
+    ) -> str:
         if not self.jwt_secret:
             raise RuntimeError("POS_JWT_SECRET belum diset.")
 
@@ -94,6 +100,8 @@ class SupabaseService:
             "iat": now,
             "exp": now + int(ttl_seconds),
         }
+        if email:
+            payload["email"] = email.strip().lower()
         h_b64 = _b64url_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
         p_b64 = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
         signing_input = f"{h_b64}.{p_b64}".encode("ascii")
